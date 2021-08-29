@@ -13,6 +13,6 @@ tmp.*
 __pycache__
 build
 dist 
-snram.egg-info
+*.egg-info
 .ipynb_checkpoints
 .pytest_cache

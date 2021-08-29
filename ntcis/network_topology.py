@@ -10,6 +10,7 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 import pandas as pd
+import operator
 
 
 class NetworkTopology:
@@ -25,7 +26,29 @@ class NetworkTopology:
         df = pd.read_csv(filename, index_col=0)
         # need to make sure dependency is interpreted as j --> i
         self.graph = nx.from_pandas_adjacency(
-            df.transpose(), create_using=nx.DiGraph)  
+            df.transpose(), create_using=nx.DiGraph)
+
+    def node_degree_centrality(self, descending=True):
+        """Compute normalised degree centrality for the nodes."""
+        degree = list(nx.degree_centrality(self.graph).values())
+        degree /= np.max(degree)
+        degree = {n: d for n, d in zip(self.graph.nodes, degree)}
+        degree = dict(
+            sorted(degree.items(), key=operator.itemgetter(1), reverse=descending))
+        return degree
+
+    def edge_betweenness_centrality(self, descending=True):
+        """Compute normalised edge betweenness centrality."""
+        betweenness = list(nx.edge_betweenness_centrality(self.graph).values())
+        betweenness /= np.max(betweenness)
+        betweenness = {n: d for n, d in zip(self.graph.edges, betweenness)}
+        betweenness = dict(
+            sorted(betweenness.items(), key=operator.itemgetter(1), reverse=descending))
+        return betweenness
+
+    def articulation_points(self):
+        """Find the articulation points of the topology."""
+        return list(nx.articulation_points(self.graph.to_undirected()))
 
     def plot(self, filename=None, figsize=(12, 12), node_size=5000, dpi=300, seed=None):
         """Plot network topology."""
@@ -55,8 +78,3 @@ class NetworkTopology:
 
         if filename:
             plt.savefig(filename, dpi=dpi)
-
-
-if __name__ == "__main__":
-    nt = NetworkTopology("test.csv")
-    nt.plot()
