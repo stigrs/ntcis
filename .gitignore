@@ -1,0 +1,18 @@
+# Files:
+~*
+*~
+*.swp
+*.tmp
+*.png
+tmp.*
+*.json
+*.log
+
+# Directories:
+.vscode
+__pycache__
+build
+dist 
+snram.egg-info
+.ipynb_checkpoints
+.pytest_cache
