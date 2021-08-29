@@ -1,6 +1,6 @@
 # Network Topology of Critical Infrastructure Systems (NTCIS)
 
-This is a library for representing the network topology of critical
+Simple library for representing the network topology of critical
 infrastructure systems.
 
 ## Licensing
@@ -18,7 +18,3 @@ The source code can be obtained from:
 The program is install by executing:
 
     python setup.py install --prefix=%USERPROFILE%
-
-Testing of the program can be done by:
-
-    python setup.py test
