@@ -37,6 +37,24 @@ class NetworkTopology:
             sorted(degree.items(), key=operator.itemgetter(1), reverse=descending))
         return degree
 
+    def node_in_degree_centrality(self, descending=True):
+        """Compute normalised in-degree centrality for the nodes."""
+        degree = list(nx.in_degree_centrality(self.graph).values())
+        degree /= np.max(degree)
+        degree = {n: d for n, d in zip(self.graph.nodes, degree)}
+        degree = dict(
+            sorted(degree.items(), key=operator.itemgetter(1), reverse=descending))
+        return degree
+
+    def node_out_degree_centrality(self, descending=True):
+        """Compute normalised out-degree centrality for the nodes."""
+        degree = list(nx.out_degree_centrality(self.graph).values())
+        degree /= np.max(degree)
+        degree = {n: d for n, d in zip(self.graph.nodes, degree)}
+        degree = dict(
+            sorted(degree.items(), key=operator.itemgetter(1), reverse=descending))
+        return degree
+
     def edge_betweenness_centrality(self, descending=True):
         """Compute normalised edge betweenness centrality."""
         betweenness = list(nx.edge_betweenness_centrality(self.graph).values())
@@ -45,6 +63,19 @@ class NetworkTopology:
         betweenness = dict(
             sorted(betweenness.items(), key=operator.itemgetter(1), reverse=descending))
         return betweenness
+
+    def eigenvector_centrality(self, out_edges=False, descending=True):
+        """Compute eigenvector centrality."""
+        graph = self.graph
+        # compute out-edges eigenvector centrality (in-edges is default)
+        if out_edges:
+            graph = self.graph.reverse()
+        centrality = list(nx.eigenvector_centrality(graph).values())
+        centrality /= np.max(centrality)
+        centrality = {n: d for n, d in zip(self.graph.nodes, centrality)}
+        centrality = dict(
+            sorted(centrality.items(), key=operator.itemgetter(1), reverse=descending))
+        return centrality
 
     def articulation_points(self):
         """Find the articulation points of the topology."""
