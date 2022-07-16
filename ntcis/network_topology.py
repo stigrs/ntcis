@@ -55,20 +55,32 @@ class NetworkTopology:
             sorted(degree.items(), key=operator.itemgetter(1), reverse=descending))
         return degree
 
-    def edge_betweenness_centrality(self, descending=True):
-        """Compute normalised edge betweenness centrality."""
-        betweenness = list(nx.edge_betweenness_centrality(self.graph).values())
+    def betweenness_centrality(self, descending=True):
+        """Compute normalised betweenness centrality for the nodes."""
+        betweenness = list(nx.betweenness_centrality(self.graph).values())
         betweenness /= np.max(betweenness)
-        betweenness = {n: d for n, d in zip(self.graph.edges, betweenness)}
+        betweenness = {n: d for n, d in zip(self.graph.nodes, betweenness)}
         betweenness = dict(
             sorted(betweenness.items(), key=operator.itemgetter(1), reverse=descending))
         return betweenness
 
-    def eigenvector_centrality(self, out_edges=False, descending=True):
-        """Compute eigenvector centrality."""
+    def closeness_centrality(self, outward=False, descending=True):
+        """Compute normalised closeness centrality for the nodes."""
+        graph = self.graph
+        if outward:
+            graph = self.graph.reverse()
+        closeness = list(nx.closeness_centrality(graph).values())
+        closeness /= np.max(closeness)
+        closeness = {n: d for n, d in zip(self.graph.nodes, closeness)}
+        closeness = dict(
+            sorted(closeness.items(), key=operator.itemgetter(1), reverse=descending))
+        return closeness
+
+    def eigenvector_centrality(self, outward=False, descending=True):
+        """Compute eigenvector centrality for the nodes."""
         graph = self.graph
         # compute out-edges eigenvector centrality (in-edges is default)
-        if out_edges:
+        if outward:
             graph = self.graph.reverse()
         centrality = list(nx.eigenvector_centrality(graph).values())
         centrality /= np.max(centrality)
