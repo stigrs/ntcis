@@ -2,3 +2,5 @@ numpy
 networkx
 matplotlib
 pandas
+geopandas
+momepy
