@@ -23,9 +23,9 @@ class Powergrid:
         self.load(filename)
 
     def load(self, filename):
-        """Load powergrid from file."""
+        """Load powergrid from GEOJSON file."""
         self.grid = gpd.read_file(filename)
-        self.graph = momepy.gdf_to_nx(self.grid, multigraph=False)
+        self.graph = momepy.gdf_to_nx(self.grid, multigraph=False, directed=False)
 
     def node_degree_centrality(self, descending=True):
         """Compute degree centrality for the nodes."""
@@ -42,6 +42,27 @@ class Powergrid:
         print("-" * 50)
         i = 1
         for v, c in self.node_degree_centrality(descending):
+            print("({0[0]:.6f}, {0[1]:.6f})\t\t{1:.8f}".format(v, c))
+            if i >= 10:
+                break
+            i += 1
+        print("-" * 50)
+
+    def node_betweenness_centrality(self, descending=True):
+        """Compute betweenness centrality for the nodes."""
+        betweenness = nx.betweenness_centrality(self.graph)
+        sorted_betweenness = sorted(
+            betweenness.items(), key=operator.itemgetter(1), reverse=descending)
+        return sorted_betweenness
+
+    def print_node_betweenness_centrality(self, descending=True):
+        """Print node betweenness centrality."""
+        print("Node Betweenness Centrality (top ten):")
+        print("-" * 50)
+        print("{0:<35}\t{1}".format("Node", "Value"))
+        print("-" * 50)
+        i = 1
+        for v, c in self.node_betweenness_centrality(descending):
             print("({0[0]:.6f}, {0[1]:.6f})\t\t{1:.8f}".format(v, c))
             if i >= 10:
                 break
