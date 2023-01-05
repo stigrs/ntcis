@@ -17,15 +17,18 @@ import operator
 class Powergrid:
     """Class for representing network topologies of powergrids."""
 
-    def __init__(self, filename):
+    def __init__(self, filename, multigraph=True, explode=False):
         self.graph = None
         self.grid = None
-        self.load(filename)
+        self.load(filename, multigraph, explode)
 
-    def load(self, filename):
+    def load(self, filename, multigraph=True, explode=False):
         """Load powergrid from GEOJSON file."""
         self.grid = gpd.read_file(filename)
-        self.graph = momepy.gdf_to_nx(self.grid, multigraph=False, directed=False)
+        if explode:
+            self.grid = self.grid.explode()
+        self.graph = momepy.gdf_to_nx(
+            self.grid, multigraph=multigraph, directed=False)
 
     def node_degree_centrality(self, descending=True):
         """Compute degree centrality for the nodes."""
