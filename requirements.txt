@@ -4,3 +4,4 @@ matplotlib
 pandas
 geopandas
 momepy
+contextily

@@ -12,15 +12,18 @@ import matplotlib.pyplot as plt
 import geopandas as gpd
 import momepy
 import operator
+import contextily as ctx
 
 
 class Powergrid:
     """Class for representing network topologies of powergrids."""
 
-    def __init__(self, filename, multigraph=True, explode=False):
+    def __init__(self, filename, multigraph=True, explode=False, epsg=None):
         self.graph = None
         self.grid = None
         self.load(filename, multigraph, explode)
+        if epsg:
+            self.grid.to_crs(epsg)
 
     def load(self, filename, multigraph=True, explode=False):
         """Load powergrid from GEOJSON file."""
@@ -110,10 +113,12 @@ class Powergrid:
             i += 1
         print("-" * 31)
 
-    def plot(self, filename=None, figsize=(12, 12), dpi=300):
+    def plot(self, filename=None, figsize=(12, 12), dpi=300, add_basemap=False):
         """Plot original grid."""
         _, ax = plt.subplots(figsize=figsize)
         self.grid.plot(ax=ax)
+        if add_basemap:
+            ctx.add_basemap(ax, crs=self.grid.crs)
         plt.tight_layout()
         plt.ylabel("North")
         plt.xlabel("East")
