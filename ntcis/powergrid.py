@@ -101,6 +101,27 @@ class Powergrid:
         """Find the articulation points of the topology."""
         return list(nx.articulation_points(self.graph.to_undirected()))
 
+    def articulation_point_targeted_attack(self, nattacks=1, filename=None, figsize=(12, 12), node_size=5, dpi=300):
+        """Carry out articulation point-targeted attack."""
+        graph_attacked = self.graph
+        ap = list(nx.articulation_points(graph_attacked.to_undirected()))
+
+        if nattacks < 1:
+            nattacks = 1
+        if nattacks > len(ap):
+            nattacks = len(ap)
+
+        for i in range(nattacks):
+            graph_attacked.remove_node(ap[i])
+
+        pos = {n: [n[0], n[1]] for n in list(graph_attacked.nodes)}
+        _, _ = plt.subplots(figsize=figsize)
+        nx.draw(graph_attacked, pos, node_size=5)
+        if filename:
+            plt.savefig(filename, dpi=dpi)
+
+        return graph_attacked
+
     def print_articulation_points(self):
         """Print articulation points of the topology."""
         print("Articulation Points (top ten):")
@@ -131,7 +152,5 @@ class Powergrid:
         _, _ = plt.subplots(figsize=figsize)
         nx.draw(self.graph, pos, node_size=node_size)
         plt.tight_layout()
-        plt.ylabel("North")
-        plt.xlabel("East")
         if filename:
             plt.savefig(filename, dpi=dpi)
