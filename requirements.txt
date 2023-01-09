@@ -5,3 +5,4 @@ pandas
 geopandas
 momepy
 contextily
+pygeos

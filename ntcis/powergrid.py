@@ -13,6 +13,18 @@ import geopandas as gpd
 import momepy
 import operator
 import contextily as ctx
+import pygeos
+import copy
+
+
+def plot_topology(graph, filename=None, figsize=(12, 12), node_size=5, dpi=300):
+    """Plot powergrid topology."""
+    pos = {n: [n[0], n[1]] for n in list(graph.nodes)}
+    _, _ = plt.subplots(figsize=figsize)
+    nx.draw(graph, pos, node_size=node_size)
+    plt.tight_layout()
+    if filename:
+        plt.savefig(filename, dpi=dpi)
 
 
 class Powergrid:
@@ -32,6 +44,74 @@ class Powergrid:
             self.grid = self.grid.explode()
         self.graph = momepy.gdf_to_nx(
             self.grid, multigraph=multigraph, directed=False)
+
+    def close_gaps(self, tolerance):
+        """Close gaps in LineString geometry where it should be contiguous.
+        Snaps both lines to a centroid of a gap in between."""
+
+        # BSD 3-Clause License
+        #
+        # Copyright (c) 2020, Urban Grammar
+        # All rights reserved.
+        #
+        # Redistribution and use in source and binary forms, with or without
+        # modification, are permitted provided that the following conditions are met:
+        #
+        # 1. Redistributions of source code must retain the above copyright notice, this
+        #    list of conditions and the following disclaimer.
+        #
+        # 2. Redistributions in binary form must reproduce the above copyright notice,
+        #    this list of conditions and the following disclaimer in the documentation
+        #    and/or other materials provided with the distribution.
+        #
+        # 3. Neither the name of the copyright holder nor the names of its
+        #    contributors may be used to endorse or promote products derived from
+        #    this software without specific prior written permission.
+        #
+        # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+        # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+        # DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+        # FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+        # DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+        # SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+        # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+        # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+        # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+        geom = self.grid.geometry.values.data
+        coords = pygeos.get_coordinates(geom)
+        indices = pygeos.get_num_coordinates(geom)
+
+        # Generate a list of start and end coordinates and create point geometries
+        edges = [0]
+        i = 0
+        for ind in indices:
+            ix = i + ind
+            edges.append(ix - 1)
+            edges.append(ix)
+            i = ix
+        edges = edges[:-1]
+        points = pygeos.points(np.unique(coords[edges], axis=0))
+        buffered = pygeos.buffer(points, tolerance)
+        dissolved = pygeos.union_all(buffered)
+
+        exploded = [
+            pygeos.get_geometry(dissolved, i)
+            for i in range(pygeos.get_num_geometries(dissolved))
+        ]
+
+        centroids = pygeos.centroid(exploded)
+        self.grid.geometry.values.data = pygeos.snap(
+            geom, pygeos.union_all(centroids), tolerance)
+
+    def connected_components(self):
+        """Return sorted list of connected components, largest first."""
+        return [len(c) for c in sorted(nx.connected_components(self.graph), key=len, reverse=True)]
+
+    def largest_connected_component(self):
+        """Return largest connected component."""
+        return max(nx.connected_components(self.graph), key=len)
 
     def node_degree_centrality(self, descending=True):
         """Compute degree centrality for the nodes."""
@@ -55,8 +135,8 @@ class Powergrid:
         print("-" * 50)
 
     def node_betweenness_centrality(self, descending=True):
-        """Compute betweenness centrality for the nodes."""
-        betweenness = nx.betweenness_centrality(self.graph)
+        """Compute normalised betweenness centrality for the nodes."""
+        betweenness = nx.betweenness_centrality(self.graph, normalized=True)
         sorted_betweenness = sorted(
             betweenness.items(), key=operator.itemgetter(1), reverse=descending)
         return sorted_betweenness
@@ -76,8 +156,9 @@ class Powergrid:
         print("-" * 50)
 
     def edge_betweenness_centrality(self, descending=True):
-        """Compute betweenness centrality for the edges."""
-        betweenness = nx.edge_betweenness_centrality(self.graph)
+        """Compute normalised betweenness centrality for the edges."""
+        betweenness = nx.edge_betweenness_centrality(
+            self.graph, normalized=True)
         sorted_betweenness = sorted(
             betweenness.items(), key=operator.itemgetter(1), reverse=descending)
         return sorted_betweenness
@@ -101,27 +182,6 @@ class Powergrid:
         """Find the articulation points of the topology."""
         return list(nx.articulation_points(self.graph.to_undirected()))
 
-    def articulation_point_targeted_attack(self, nattacks=1, filename=None, figsize=(12, 12), node_size=5, dpi=300):
-        """Carry out articulation point-targeted attack."""
-        graph_attacked = self.graph
-        ap = list(nx.articulation_points(graph_attacked.to_undirected()))
-
-        if nattacks < 1:
-            nattacks = 1
-        if nattacks > len(ap):
-            nattacks = len(ap)
-
-        for i in range(nattacks):
-            graph_attacked.remove_node(ap[i])
-
-        pos = {n: [n[0], n[1]] for n in list(graph_attacked.nodes)}
-        _, _ = plt.subplots(figsize=figsize)
-        nx.draw(graph_attacked, pos, node_size=5)
-        if filename:
-            plt.savefig(filename, dpi=dpi)
-
-        return graph_attacked
-
     def print_articulation_points(self):
         """Print articulation points of the topology."""
         print("Articulation Points (top ten):")
@@ -133,6 +193,59 @@ class Powergrid:
                 break
             i += 1
         print("-" * 31)
+
+    def articulation_point_targeted_attack(self, nattacks=1):
+        """Carry out brute-force articulation point-targeted attack.
+
+        Reference:
+            Tian, L., Bashan, A., Shi, DN. et al. Articulation points in complex networks. 
+            Nat Commun 8, 14223 (2017). https://doi.org/10.1038/ncomms14223 
+        """
+        graph_attacked = copy.deepcopy(self.graph)
+        ap = list(nx.articulation_points(graph_attacked.to_undirected()))
+
+        if nattacks < 1:
+            nattacks = 1
+        if nattacks > len(graph_attacked.nodes):
+            nattacks = len(graph_attacked.nodes)
+
+        largest_cc = [] # list with sizes of largest connected components
+        nodes_attacked = [] # list with coordinates of attacked nodes
+
+        for i in range(nattacks):
+            graph_attacked.remove_node(ap[i])
+            nodes_attacked.append(ap[i])
+            largest_cc.append(
+                len(max(nx.connected_components(graph_attacked), key=len)))
+
+        return graph_attacked, nodes_attacked, largest_cc
+
+    def betweenness_centrality_attack(self, nattacks=1):
+        """Carry out iterative betweenness centrality targeted attack.
+
+        Reference:
+            Petter Holme, Beom Jun Kim, Chang No Yoon, and Seung Kee Han
+            Phys. Rev. E 65, 056109. https://arxiv.org/abs/cond-mat/0202410v1
+        """
+        graph_attacked = copy.deepcopy(self.graph) # work on a local copy of the topology
+
+        if nattacks < 1:
+            nattacks = 1
+        if nattacks > len(self.graph.nodes):
+            nattacks = len(self.graph.nodes)
+
+        largest_cc = [] # list with sizes of largest connected components
+        nodes_attacked = [] # list with coordinates of attacked nodes
+
+        for _ in range(nattacks):
+            bc = nx.betweenness_centrality(graph_attacked, normalized=True)
+            bc = sorted(bc.items(), key=operator.itemgetter(1), reverse=True)
+            graph_attacked.remove_node(bc[0][0])
+            nodes_attacked.append(bc[0][0])
+            largest_cc.append(
+                len(max(nx.connected_components(graph_attacked), key=len)))
+
+        return graph_attacked, nodes_attacked, largest_cc
 
     def plot(self, filename=None, figsize=(12, 12), dpi=300, add_basemap=False):
         """Plot original grid."""
@@ -148,9 +261,4 @@ class Powergrid:
 
     def plot_topology(self, filename=None, figsize=(12, 12), node_size=5, dpi=300):
         """Plot powergrid topology."""
-        pos = {n: [n[0], n[1]] for n in list(self.graph.nodes)}
-        _, _ = plt.subplots(figsize=figsize)
-        nx.draw(self.graph, pos, node_size=node_size)
-        plt.tight_layout()
-        if filename:
-            plt.savefig(filename, dpi=dpi)
+        plot_topology(self.graph, filename, figsize, node_size, dpi)
