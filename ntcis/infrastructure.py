@@ -4,17 +4,63 @@
 # LICENSE.txt or http://www.opensource.org/licenses/mit-license.php for terms
 # and conditions.
 
-"""Provides methods for analysing network topology of powergrids."""
+"""Provides methods for analysing network topology of infrastructure grids."""
 
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 import geopandas as gpd
+import contextily as ctx
 import momepy
 import operator
-import contextily as ctx
 import pygeos
 import copy
+
+
+def largest_connected_component(graph):
+    """Return largest connected component."""
+    return len(max(nx.connected_components(graph), key=len))
+
+
+def efficiency(graph, weight=None):
+    """Return efficiency of the network."""
+    if graph.is_connected():
+        return nx.average_shortest_path_length(graph, weight=weight)
+    else:
+        eff = []
+        for subgraph in (graph.subgraph(cc).copy() for cc in nx.connected_components(graph)):
+            eff.append(nx.average_shortest_path_length(
+                subgraph, weight=weight))
+        return sum(eff)
+
+
+def degree_centrality(graph, descending=True):
+    """Compute degree centrality for the nodes."""
+    degree = nx.degree_centrality(graph)
+    sorted_degree = sorted(
+        degree.items(), key=operator.itemgetter(1), reverse=descending)
+    return sorted_degree
+
+
+def betweenness_centrality(graph, descending=True, normalized=True):
+    """Compute betweenness centrality for the nodes."""
+    betweenness = nx.betweenness_centrality(graph, normalized=normalized)
+    sorted_betweenness = sorted(
+        betweenness.items(), key=operator.itemgetter(1), reverse=descending)
+    return sorted_betweenness
+
+
+def edge_betweenness_centrality(graph, descending=True, normalized=True):
+    """Compute betweenness centrality for the edges."""
+    betweenness = nx.edge_betweenness_centrality(graph, normalized=normalized)
+    sorted_betweenness = sorted(
+        betweenness.items(), key=operator.itemgetter(1), reverse=descending)
+    return sorted_betweenness
+
+
+def articulation_points(graph):
+    """Find the articulation points of the topology."""
+    return list(nx.articulation_points(graph.to_undirected()))
 
 
 def plot_topology(graph, filename=None, figsize=(12, 12), node_size=5, dpi=300):
@@ -27,21 +73,30 @@ def plot_topology(graph, filename=None, figsize=(12, 12), node_size=5, dpi=300):
         plt.savefig(filename, dpi=dpi)
 
 
-class Powergrid:
-    """Class for representing network topologies of powergrids."""
+class Infrastructure:
+    """Class for representing network topology of infrastructure grids."""
 
-    def __init__(self, filename, multigraph=True, explode=False, epsg=None):
+    def __init__(self, filename, multigraph=True, explode=False, epsg=None, capacity=None):
         self.graph = None
         self.grid = None
-        self.load(filename, multigraph, explode)
+        self.load(filename, multigraph, explode, capacity)
         if epsg:
             self.grid.to_crs(epsg)
 
-    def load(self, filename, multigraph=True, explode=False):
-        """Load powergrid from GEOJSON file."""
+    def load(self, filename, multigraph=True, explode=False, capacity=None):
+        """Load infrastructure grid from GEOJSON file."""
         self.grid = gpd.read_file(filename)
         if explode:
             self.grid = self.grid.explode()
+        if capacity:
+            self.grid[capacity] = self.grid[capacity].replace(
+                to_replace=np.inf, value=np.finfo(float).max)
+            self.grid[capacity] = self.grid[capacity].replace(
+                to_replace=np.nan, value=np.finfo(float).eps)
+            self.grid[capacity] = self.grid[capacity].replace(
+                to_replace=0.0, value=np.finfo(float).eps)
+            # avoid division by zero, NaN or Inf
+            self.grid["weight"] = 1.0 / self.grid[capacity]
         self.graph = momepy.gdf_to_nx(
             self.grid, multigraph=multigraph, directed=False)
 
@@ -105,43 +160,37 @@ class Powergrid:
         self.grid.geometry.values.data = pygeos.snap(
             geom, pygeos.union_all(centroids), tolerance)
 
-    def connected_components(self):
-        """Return sorted list of connected components, largest first."""
-        return [len(c) for c in sorted(nx.connected_components(self.graph), key=len, reverse=True)]
-
     def largest_connected_component(self):
         """Return largest connected component."""
-        return max(nx.connected_components(self.graph), key=len)
+        return largest_connected_component(self.graph)
 
-    def node_degree_centrality(self, descending=True):
+    def efficiency(self, weight=None):
+        """Return the efficiency of the network."""
+        return efficiency(self.graph, weight=weight)
+
+    def degree_centrality(self, descending=True):
         """Compute degree centrality for the nodes."""
-        degree = nx.degree_centrality(self.graph)
-        sorted_degree = sorted(
-            degree.items(), key=operator.itemgetter(1), reverse=descending)
-        return sorted_degree
+        return degree_centrality(self.graph, descending)
 
-    def print_node_degree_centrality(self, descending=True):
+    def print_degree_centrality(self, descending=True):
         """Print node degree centrality."""
         print("Node Degree Centrality (top ten):")
         print("-" * 50)
         print("{0:<35}\t{1}".format("Node", "Value"))
         print("-" * 50)
         i = 1
-        for v, c in self.node_degree_centrality(descending):
+        for v, c in self.degree_centrality(descending):
             print("({0[0]:.6f}, {0[1]:.6f})\t\t{1:.8f}".format(v, c))
             if i >= 10:
                 break
             i += 1
         print("-" * 50)
 
-    def node_betweenness_centrality(self, descending=True):
-        """Compute normalised betweenness centrality for the nodes."""
-        betweenness = nx.betweenness_centrality(self.graph, normalized=True)
-        sorted_betweenness = sorted(
-            betweenness.items(), key=operator.itemgetter(1), reverse=descending)
-        return sorted_betweenness
+    def betweenness_centrality(self, descending=True, normalized=True):
+        """Compute betweenness centrality for the nodes."""
+        return betweenness_centrality(self.graph, descending, normalized)
 
-    def print_node_betweenness_centrality(self, descending=True):
+    def print_betweenness_centrality(self, descending=True):
         """Print node betweenness centrality."""
         print("Node Betweenness Centrality (top ten):")
         print("-" * 50)
@@ -155,13 +204,9 @@ class Powergrid:
             i += 1
         print("-" * 50)
 
-    def edge_betweenness_centrality(self, descending=True):
-        """Compute normalised betweenness centrality for the edges."""
-        betweenness = nx.edge_betweenness_centrality(
-            self.graph, normalized=True)
-        sorted_betweenness = sorted(
-            betweenness.items(), key=operator.itemgetter(1), reverse=descending)
-        return sorted_betweenness
+    def edge_betweenness_centrality(self, descending=True, normalized=True):
+        """Compute betweenness centrality for the edges."""
+        return edge_betweenness_centrality(self.graph, descending, normalized)
 
     def print_edge_betweenness_centrality(self, descending=True):
         """Print edge betweenness centrality."""
@@ -180,7 +225,7 @@ class Powergrid:
 
     def articulation_points(self):
         """Find the articulation points of the topology."""
-        return list(nx.articulation_points(self.graph.to_undirected()))
+        return articulation_points(self.graph)
 
     def print_articulation_points(self):
         """Print articulation points of the topology."""
@@ -198,57 +243,88 @@ class Powergrid:
         """Carry out brute-force articulation point-targeted attack.
 
         Reference:
-            Tian, L., Bashan, A., Shi, DN. et al. Articulation points in complex networks. 
-            Nat Commun 8, 14223 (2017). https://doi.org/10.1038/ncomms14223 
+            Tian, L., Bashan, A., Shi, DN. et al. Articulation points in complex networks.
+            Nat Commun 8, 14223 (2017). https://doi.org/10.1038/ncomms14223
         """
         graph_attacked = copy.deepcopy(self.graph)
-        ap = list(nx.articulation_points(graph_attacked.to_undirected()))
+        ap = articulation_points(graph_attacked)
 
         if nattacks < 1:
             nattacks = 1
         if nattacks > len(graph_attacked.nodes):
             nattacks = len(graph_attacked.nodes)
 
-        largest_cc = [] # list with sizes of largest connected components
-        nodes_attacked = [] # list with coordinates of attacked nodes
+        lcc = [largest_connected_component(graph_attacked)]
+        eff = [efficiency(graph_attacked)]
+        nodes_attacked = []  # list with coordinates of attacked nodes
 
         for i in range(nattacks):
             graph_attacked.remove_node(ap[i])
             nodes_attacked.append(ap[i])
-            largest_cc.append(
-                len(max(nx.connected_components(graph_attacked), key=len)))
+            lcc.append(largest_connected_component(graph_attacked))
+            eff.append(efficiency(graph_attacked))
 
-        return graph_attacked, nodes_attacked, largest_cc
+        return graph_attacked, nodes_attacked, lcc, eff
 
     def betweenness_centrality_attack(self, nattacks=1):
-        """Carry out iterative betweenness centrality targeted attack.
+        """Carry out iterative betweenness centrality targeted attack on nodes.
 
         Reference:
             Petter Holme, Beom Jun Kim, Chang No Yoon, and Seung Kee Han
             Phys. Rev. E 65, 056109. https://arxiv.org/abs/cond-mat/0202410v1
         """
-        graph_attacked = copy.deepcopy(self.graph) # work on a local copy of the topology
+        graph_attacked = copy.deepcopy(
+            self.graph)  # work on a local copy of the topology
 
         if nattacks < 1:
             nattacks = 1
         if nattacks > len(self.graph.nodes):
             nattacks = len(self.graph.nodes)
 
-        largest_cc = [] # list with sizes of largest connected components
-        nodes_attacked = [] # list with coordinates of attacked nodes
+        lcc = [largest_connected_component(graph_attacked)]
+        eff = [efficiency(graph_attacked)]
+        nodes_attacked = [0]  # list with coordinates of attacked nodes
 
         for _ in range(nattacks):
-            bc = nx.betweenness_centrality(graph_attacked, normalized=True)
-            bc = sorted(bc.items(), key=operator.itemgetter(1), reverse=True)
+            bc = betweenness_centrality(graph_attacked)
             graph_attacked.remove_node(bc[0][0])
             nodes_attacked.append(bc[0][0])
-            largest_cc.append(
-                len(max(nx.connected_components(graph_attacked), key=len)))
+            lcc.append(largest_connected_component(graph_attacked))
+            eff.append(efficiency(graph_attacked))
 
-        return graph_attacked, nodes_attacked, largest_cc
+        return graph_attacked, nodes_attacked, lcc, eff
+
+    def edge_betweenness_centrality_attack(self, nattacks=1):
+        """Carry out iterative betweenness centrality targeted attack on edges.
+
+        Reference:
+            Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative analysis of 
+            link removal strategies in real complex weighted networks. 
+            Sci Rep 10, 3911 (2020). https://doi.org/10.1038/s41598-020-60298-7
+        """
+        graph_attacked = copy.deepcopy(
+            self.graph)  # work on a local copy of the topology
+
+        if nattacks < 1:
+            nattacks = 1
+        if nattacks > len(self.graph.edges):
+            nattacks = len(self.graph.edges)
+
+        lcc = [largest_connected_component(graph_attacked)]
+        eff = [efficiency(graph_attacked)]
+        edges_attacked = [0]  # list with coordinates of attacked edges
+
+        for _ in range(nattacks):
+            bc = edge_betweenness_centrality(graph_attacked)
+            graph_attacked.remove_edge(bc[0][0][0], bc[0][0][1])
+            edges_attacked.append(bc[0][0])
+            lcc.append(largest_connected_component(graph_attacked))
+            eff.append(efficiency(graph_attacked))
+
+        return graph_attacked, edges_attacked, lcc, eff
 
     def plot(self, filename=None, figsize=(12, 12), dpi=300, add_basemap=False):
-        """Plot original grid."""
+        """Plot original infrastructure grid."""
         _, ax = plt.subplots(figsize=figsize)
         self.grid.plot(ax=ax)
         if add_basemap:
@@ -260,5 +336,5 @@ class Powergrid:
             plt.savefig(filename, dpi=dpi)
 
     def plot_topology(self, filename=None, figsize=(12, 12), node_size=5, dpi=300):
-        """Plot powergrid topology."""
+        """Plot graph of infrastructure topology."""
         plot_topology(self.graph, filename, figsize, node_size, dpi)
