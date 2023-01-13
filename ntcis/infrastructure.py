@@ -37,7 +37,9 @@ def efficiency(graph, weight=None):
         for i in subgraph.nodes:
             for j in subgraph.nodes:
                 if i is not j:
-                    dij = 1.0 / nx.shortest_path_length(subgraph, source=i, target=j, weight="weight")
+                    dij = 1.0 / \
+                        nx.shortest_path_length(
+                            subgraph, source=i, target=j, weight="weight")
                     sum_dij = sum_dij + dij
         eff.append(sum_dij / (n * (n - 1)))
     return sum(eff)
@@ -85,7 +87,7 @@ def plot_topology(graph, filename=None, figsize=(12, 12), node_size=5, dpi=300):
 class Infrastructure:
     """Class for representing network topology of infrastructure grids."""
 
-    def __init__(self, filename, multigraph=True, explode=False, epsg=None, capacity=None):
+    def __init__(self, filename, multigraph=False, explode=False, epsg=None, capacity=None):
         """Initialise infrastructure.
 
         Arguments:
@@ -97,13 +99,15 @@ class Infrastructure:
         """
         self.graph = None
         self.grid = None
+        self.__multigraph = multigraph
         self.load(filename, multigraph, explode, capacity)
         if epsg:
             self.grid.to_crs(epsg)
 
-    def load(self, filename, multigraph=True, explode=False, capacity=None):
+    def load(self, filename, multigraph=False, explode=False, capacity=None):
         """Load geodata for infrastructure grid from file (e.g. GEOJSON format)."""
         self.grid = gpd.read_file(filename)
+        self.__multigraph = multigraph
         if explode:
             self.grid = self.grid.explode()
         if capacity:
@@ -178,6 +182,8 @@ class Infrastructure:
         centroids = pygeos.centroid(exploded)
         self.grid.geometry.values.data = pygeos.snap(
             geom, pygeos.union_all(centroids), tolerance)
+        self.graph = momepy.gdf_to_nx(
+            self.grid, multigraph=self.__multigraph, directed=False)
 
     def largest_connected_component(self):
         """Return largest connected component."""
