@@ -30,17 +30,18 @@ def efficiency(graph, weight=None):
         analysis of link removal strategies in real complex weighted networks. 
         Sci Rep 10, 3911 (2020). https://doi.org/10.1038/s41598-020-60298-7
     """
-    eff = []
-    for subgraph in (graph.subgraph(cc).copy() for cc in nx.connected_components(graph)):
-        n = subgraph.number_of_nodes()
-        sum_dij = 0.0
-        for i in subgraph.nodes:
-            for j in subgraph.nodes:
-                if i is not j:
-                    dij = 1.0 / nx.shortest_path_length(subgraph, source=i, target=j, weight="weight")
-                    sum_dij = sum_dij + dij
-        eff.append(sum_dij / (n * (n - 1)))
-    return sum(eff)
+    sum_dij = 0.0
+    for i in graph.nodes:
+        for j in graph.nodes:
+            if i is not j:
+                try:
+                    dij = 1.0 / nx.shortest_path_length(graph, source=i, target=j, weight="weight")
+                except nx.NetworkXNoPath:
+                    dij = 0.0
+                sum_dij += dij
+    n = graph.number_of_nodes()
+    eff = sum_dij / (n * (n - 1))
+    return eff
 
 
 def degree_centrality(graph):
