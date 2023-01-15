@@ -25,55 +25,44 @@ class NetworkTopology:
         """Load network topology from CSV file with interdependency matrix."""
         df = pd.read_csv(filename, index_col=0)
         # need to make sure dependency is interpreted as j --> i
-        self.graph = nx.from_pandas_adjacency(
-            df.transpose(), create_using=nx.DiGraph)
+        self.graph = nx.from_pandas_adjacency(df.transpose(), create_using=nx.DiGraph)
 
     def node_degree_centrality(self, descending=True):
-        """Compute normalised degree centrality for the nodes."""
+        """Compute degree centrality for the nodes."""
         degree = list(nx.degree_centrality(self.graph).values())
-        degree /= np.max(degree)
         degree = {n: d for n, d in zip(self.graph.nodes, degree)}
-        degree = dict(
-            sorted(degree.items(), key=operator.itemgetter(1), reverse=descending))
+        degree = dict(sorted(degree.items(), key=operator.itemgetter(1), reverse=descending))
         return degree
 
     def node_in_degree_centrality(self, descending=True):
-        """Compute normalised in-degree centrality for the nodes."""
+        """Compute in-degree centrality for the nodes."""
         degree = list(nx.in_degree_centrality(self.graph).values())
-        degree /= np.max(degree)
         degree = {n: d for n, d in zip(self.graph.nodes, degree)}
-        degree = dict(
-            sorted(degree.items(), key=operator.itemgetter(1), reverse=descending))
+        degree = dict(sorted(degree.items(), key=operator.itemgetter(1), reverse=descending))
         return degree
 
     def node_out_degree_centrality(self, descending=True):
-        """Compute normalised out-degree centrality for the nodes."""
+        """Compute out-degree centrality for the nodes."""
         degree = list(nx.out_degree_centrality(self.graph).values())
-        degree /= np.max(degree)
         degree = {n: d for n, d in zip(self.graph.nodes, degree)}
-        degree = dict(
-            sorted(degree.items(), key=operator.itemgetter(1), reverse=descending))
+        degree = dict(sorted(degree.items(), key=operator.itemgetter(1), reverse=descending))
         return degree
 
     def betweenness_centrality(self, descending=True):
-        """Compute normalised betweenness centrality for the nodes."""
+        """Compute betweenness centrality for the nodes."""
         betweenness = list(nx.betweenness_centrality(self.graph).values())
-        betweenness /= np.max(betweenness)
         betweenness = {n: d for n, d in zip(self.graph.nodes, betweenness)}
-        betweenness = dict(
-            sorted(betweenness.items(), key=operator.itemgetter(1), reverse=descending))
+        betweenness = dict(sorted(betweenness.items(), key=operator.itemgetter(1), reverse=descending))
         return betweenness
 
     def closeness_centrality(self, outward=False, descending=True):
-        """Compute normalised closeness centrality for the nodes."""
+        """Compute closeness centrality for the nodes."""
         graph = self.graph
         if outward:
             graph = self.graph.reverse()
         closeness = list(nx.closeness_centrality(graph).values())
-        closeness /= np.max(closeness)
         closeness = {n: d for n, d in zip(self.graph.nodes, closeness)}
-        closeness = dict(
-            sorted(closeness.items(), key=operator.itemgetter(1), reverse=descending))
+        closeness = dict(sorted(closeness.items(), key=operator.itemgetter(1), reverse=descending))
         return closeness
 
     def eigenvector_centrality(self, outward=False, descending=True):
@@ -83,10 +72,8 @@ class NetworkTopology:
         if outward:
             graph = self.graph.reverse()
         centrality = list(nx.eigenvector_centrality(graph).values())
-        centrality /= np.max(centrality)
         centrality = {n: d for n, d in zip(self.graph.nodes, centrality)}
-        centrality = dict(
-            sorted(centrality.items(), key=operator.itemgetter(1), reverse=descending))
+        centrality = dict(sorted(centrality.items(), key=operator.itemgetter(1), reverse=descending))
         return centrality
 
     def articulation_points(self):
@@ -97,10 +84,8 @@ class NetworkTopology:
         """Plot network topology."""
         pos = nx.spring_layout(self.graph, seed=seed)
 
-        el = [(u, v) for (u, v, d) in self.graph.edges(
-            data=True) if d["weight"] >= 0.05]
-        es = [(u, v) for (u, v, d) in self.graph.edges(
-            data=True) if d["weight"] < 0.05]
+        el = [(u, v) for (u, v, d) in self.graph.edges(data=True) if d["weight"] >= 0.05]
+        es = [(u, v) for (u, v, d) in self.graph.edges(data=True) if d["weight"] < 0.05]
 
         fig, _ = plt.subplots(figsize=figsize)
 
@@ -108,10 +93,8 @@ class NetworkTopology:
         nx.draw_networkx_nodes(self.graph, pos, node_size=node_size)
 
         # Edges:
-        nx.draw_networkx_edges(
-            self.graph, pos, edgelist=el, width=4, node_size=node_size)
-        nx.draw_networkx_edges(
-            self.graph, pos, edgelist=es, width=1, node_size=node_size)
+        nx.draw_networkx_edges(self.graph, pos, edgelist=el, width=4, node_size=node_size)
+        nx.draw_networkx_edges(self.graph, pos, edgelist=es, width=1, node_size=node_size)
 
         # Labels:
         nx.draw_networkx_labels(self.graph, pos)
