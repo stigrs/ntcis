@@ -261,7 +261,7 @@ class Infrastructure:
         print("{0:<35}\t{1:<35}\t{2}".format("Node A", "Node B", "Value"))
         print("-" * 90)
         i = 1
-        for v, c in self.edge_betweenness_centrality(weight)
+        for v, c in self.edge_betweenness_centrality(weight):
             print("({0[0]:.6f}, {0[1]:.6f})\t\t({1[0]:.6f}, {1[1]:.6f})\t\t{2:.8f}".format(v[0], v[1], c))
             if i >= 10:
                 break
