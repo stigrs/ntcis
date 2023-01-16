@@ -11,6 +11,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import geopandas as gpd
 import contextily as ctx
+import random as rd
 import momepy
 import operator
 import pygeos
@@ -36,7 +37,7 @@ def efficiency(graph, weight=None):
             if i is not j:
                 try:
                     dij = 1.0 / nx.shortest_path_length(graph, source=i, target=j, weight="weight")
-                except nx.NetworkXNoPath:
+                except nx.NetworkXNoPath: # shortest path length is infinite
                     dij = 0.0
                 sum_dij += dij
     n = graph.number_of_nodes()
@@ -313,13 +314,12 @@ class Infrastructure:
 
         return graph_attacked, nodes_attacked, lcc, eff
 
-    def betweenness_centrality_attack(self, nattacks=1, weighted=True, centrality_method="shortest_path"):
+    def betweenness_centrality_attack(self, nattacks=1, weighted=True):
         """Carry out iterative betweenness centrality targeted attack on nodes. 
 
         Arguments:
             nattacks: Number of attacks to be carried out
             weighted: If weighted is true, use weighted betweenness centrality.
-            centrality_method: Use shortest_path or current_flow
 
         Reference:
             Petter Holme, Beom Jun Kim, Chang No Yoon, and Seung Kee Han
@@ -343,10 +343,7 @@ class Infrastructure:
             weight = None
 
         for _ in range(nattacks):
-            if centrality_method == "current_flow":
-                bc = current_flow_betweenness_centrality(graph_attacked, weight)
-            else: # shortest path
-                bc = betweenness_centrality(graph_attacked, weight)
+            bc = betweenness_centrality(graph_attacked, weight)
             graph_attacked.remove_node(bc[0][0])
             nodes_attacked.append(bc[0][0])
             if weighted:
@@ -356,13 +353,12 @@ class Infrastructure:
 
         return graph_attacked, nodes_attacked, network_measure
 
-    def edge_betweenness_centrality_attack(self, nattacks=1, weighted=True, centrality_method="shortest_path"):
+    def edge_betweenness_centrality_attack(self, nattacks=1, weighted=True):
         """Carry out iterative betweenness centrality targeted attack on edges.
 
         Arguments:
             nattacks: Number of attacks to be carried out
             weighted: If weighted is true, use weighted betweenness centrality.
-            centrality_method: Use shortest_path or current_flow
 
         Reference:
             Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative analysis of 
@@ -387,12 +383,75 @@ class Infrastructure:
             weight = None
 
         for _ in range(nattacks):
-            if centrality_method == "current_flow":
-                bc = edge_current_flow_betweenness_centrality(graph_attacked, weight)
-            else:
-                bc = edge_betweenness_centrality(graph_attacked, weight)
+            bc = edge_betweenness_centrality(graph_attacked, weight)
             graph_attacked.remove_edge(bc[0][0][0], bc[0][0][1])
             edges_attacked.append(bc[0][0])
+            if weighted:
+                network_measure.append(efficiency(graph_attacked))
+            else:
+                network_measure.append(largest_connected_component(graph_attacked))
+
+        return graph_attacked, edges_attacked, network_measure
+
+    def random_attack(self, nattacks=1, weighted=True):
+        """Carry out random attack on nodes.
+
+        Arguments:
+            nattacks: Number of attacks to be carried out
+            weighted: If weighted is true, use efficiency as network functionality measure
+        """
+        if nattacks < 1:
+            nattacks = 1
+        if nattacks > len(self.graph.edges):
+            nattacks = len(self.graph.edges)
+
+        # work on a local copy of the topology
+        graph_attacked = copy.deepcopy(self.graph)
+        nodes_attacked = [0]  # list with coordinates of attacked nodes
+
+        if weighted:
+            # network functioning measure
+            network_measure = [efficiency(graph_attacked)]
+        else:
+            network_measure = [largest_connected_component(graph_attacked)]
+
+        for _ in range(nattacks):
+            node = rd.sample(list(graph_attacked.nodes), 1)
+            graph_attacked.remove_node(node[0][0])
+            nodes_attacked.append(node[0][0])
+            if weighted:
+                network_measure.append(efficiency(graph_attacked))
+            else:
+                network_measure.append(largest_connected_component(graph_attacked))
+
+        return graph_attacked, nodes_attacked, network_measure
+
+    def edge_random_attack(self, nattacks=1, weighted=True):
+        """Carry out random attack on edges.
+
+        Arguments:
+            nattacks: Number of attacks to be carried out
+            weighted: If weighted is true, use efficiency as network functionality measure
+        """
+        if nattacks < 1:
+            nattacks = 1
+        if nattacks > len(self.graph.edges):
+            nattacks = len(self.graph.edges)
+
+        # work on a local copy of the topology
+        graph_attacked = copy.deepcopy(self.graph)
+        edges_attacked = [0]  # list with coordinates of attacked edges
+
+        if weighted:
+            # network functioning measure
+            network_measure = [efficiency(graph_attacked)]
+        else:
+            network_measure = [largest_connected_component(graph_attacked)]
+
+        for _ in range(nattacks):
+            edge = rd.sample(list(graph_attacked), 1)
+            graph_attacked.remove_edge(edge[0][0][0], edge[0][0][1])
+            edges_attacked.append(edge[0][0])
             if weighted:
                 network_measure.append(efficiency(graph_attacked))
             else:
