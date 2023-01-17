@@ -314,7 +314,7 @@ class Infrastructure:
 
         return graph_attacked, nodes_attacked, lcc, eff
 
-    def betweenness_centrality_attack(self, nattacks=1, weighted=True):
+    def betweenness_centrality_attack(self, nattacks=1, weighted=False):
         """Carry out iterative betweenness centrality targeted attack on nodes. 
 
         Arguments:
@@ -353,7 +353,7 @@ class Infrastructure:
 
         return graph_attacked, nodes_attacked, network_measure
 
-    def edge_betweenness_centrality_attack(self, nattacks=1, weighted=True):
+    def edge_betweenness_centrality_attack(self, nattacks=1, weighted=False):
         """Carry out iterative betweenness centrality targeted attack on edges.
 
         Arguments:
@@ -393,7 +393,7 @@ class Infrastructure:
 
         return graph_attacked, edges_attacked, network_measure
 
-    def random_attack(self, nattacks=1, weighted=True):
+    def random_attack(self, nattacks=1, weighted=False):
         """Carry out random attack on nodes.
 
         Arguments:
@@ -426,7 +426,7 @@ class Infrastructure:
 
         return graph_attacked, nodes_attacked, network_measure
 
-    def edge_random_attack(self, nattacks=1, weighted=True):
+    def edge_random_attack(self, nattacks=1, weighted=False):
         """Carry out random attack on edges.
 
         Arguments:
