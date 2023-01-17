@@ -48,14 +48,14 @@ def efficiency(graph, weight=None):
 def degree_centrality(graph):
     """Compute degree centrality for the nodes."""
     degree = nx.degree_centrality(graph)
-    sorted_degree = sorted(degree.items(), key=operator.itemgetter(1), reverse=False)
+    sorted_degree = sorted(degree.items(), key=operator.itemgetter(1), reverse=True)
     return sorted_degree
 
 
 def betweenness_centrality(graph, weight=None):
     """Compute betweenness centrality for the nodes."""
     betweenness = nx.betweenness_centrality(graph, weight)
-    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=False)
+    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=True)
     return sorted_betweenness
 
 
@@ -70,14 +70,14 @@ def current_flow_betweenness_centrality(graph, weight=None):
         lcc = max(nx.connected_components(graph), key=len)
         subgraph = graph.subgraph(lcc).copy()
         betweenness = nx.current_flow_betweenness_centrality(subgraph, weight=weight)
-    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=False)
+    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=True)
     return sorted_betweenness
 
 
 def edge_betweenness_centrality(graph, weight=None):
     """Compute betweenness centrality for the edges."""
     betweenness = nx.edge_betweenness_centrality(graph, weight=weight)
-    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=False)
+    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=True)
     return sorted_betweenness
 
 
@@ -92,7 +92,7 @@ def edge_current_flow_betweenness_centrality(graph, weight=None):
         lcc = max(nx.connected_components(graph), key=len)
         subgraph = graph.subgraph(lcc).copy()
         betweenness = nx.edge_current_flow_betweenness_centrality(subgraph, weight=weight)
-    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=False)
+    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=True)
     return sorted_betweenness
 
 
@@ -243,7 +243,7 @@ class Infrastructure:
         print("{0:<35}\t{1}".format("Node", "Value"))
         print("-" * 50)
         i = 1
-        for v, c in self.node_betweenness_centrality(weight):
+        for v, c in self.betweenness_centrality(weight):
             print("({0[0]:.6f}, {0[1]:.6f})\t\t{1:.8f}".format(v, c))
             if i >= 10:
                 break
@@ -459,10 +459,10 @@ class Infrastructure:
 
         return graph_attacked, edges_attacked, network_measure
 
-    def plot(self, filename=None, figsize=(12, 12), dpi=300, add_basemap=False):
+    def plot(self, filename=None, figsize=(12, 12), dpi=300, add_basemap=False, **kwargs):
         """Plot original infrastructure grid."""
         _, ax = plt.subplots(figsize=figsize)
-        self.grid.plot(ax=ax)
+        self.grid.plot(ax=ax, **kwargs)
         if add_basemap:
             ctx.add_basemap(ax, crs=self.grid.crs)
         plt.tight_layout()
