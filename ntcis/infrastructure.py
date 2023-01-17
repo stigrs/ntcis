@@ -417,8 +417,8 @@ class Infrastructure:
 
         for _ in range(nattacks):
             node = rd.sample(list(graph_attacked.nodes), 1)
-            graph_attacked.remove_node(node[0][0])
-            nodes_attacked.append(node[0][0])
+            graph_attacked.remove_node(node[0])
+            nodes_attacked.append(node[0])
             if weighted:
                 network_measure.append(efficiency(graph_attacked))
             else:
@@ -450,8 +450,8 @@ class Infrastructure:
 
         for _ in range(nattacks):
             edge = rd.sample(list(graph_attacked), 1)
-            graph_attacked.remove_edge(edge[0][0][0], edge[0][0][1])
-            edges_attacked.append(edge[0][0])
+            graph_attacked.remove_edge(edge[0][0], edge[0][1])
+            edges_attacked.append(edge[0])
             if weighted:
                 network_measure.append(efficiency(graph_attacked))
             else:
