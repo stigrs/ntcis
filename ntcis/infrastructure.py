@@ -470,6 +470,7 @@ class Infrastructure:
         plt.xlabel("East")
         if filename:
             plt.savefig(filename, dpi=dpi)
+        return ax
 
     def plot_topology(self, filename=None, figsize=(12, 12), node_size=5, dpi=300):
         """Plot graph of infrastructure topology."""
