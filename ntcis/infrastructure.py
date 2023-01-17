@@ -36,7 +36,7 @@ def efficiency(graph, weight=None):
         for j in graph.nodes:
             if i is not j:
                 try:
-                    dij = 1.0 / nx.shortest_path_length(graph, source=i, target=j, weight="weight")
+                    dij = 1.0 / nx.shortest_path_length(graph, source=i, target=j, weight=weight)
                 except nx.NetworkXNoPath: # shortest path length is infinite
                     dij = 0.0
                 sum_dij += dij
@@ -284,7 +284,7 @@ class Infrastructure:
             i += 1
         print("-" * 31)
 
-    def articulation_point_targeted_attack(self, nattacks=1):
+    def articulation_point_targeted_attack(self, nattacks=1, weight=None):
         """Carry out brute-force articulation point-targeted attack.
 
         Arguments:
@@ -300,7 +300,7 @@ class Infrastructure:
         if nattacks < 1:
             nattacks = 1
         if nattacks > len(graph_attacked.nodes):
-            nattacks = len(graph_attacked.nodes)
+            nattacks = len(graph_attacked.nodes, weight)
 
         lcc = [largest_connected_component(graph_attacked)]
         eff = [efficiency(graph_attacked)]
@@ -310,16 +310,16 @@ class Infrastructure:
             graph_attacked.remove_node(ap[i])
             nodes_attacked.append(ap[i])
             lcc.append(largest_connected_component(graph_attacked))
-            eff.append(efficiency(graph_attacked))
+            eff.append(efficiency(graph_attacked, weight))
 
         return graph_attacked, nodes_attacked, lcc, eff
 
-    def betweenness_centrality_attack(self, nattacks=1, weighted=False):
+    def betweenness_centrality_attack(self, nattacks=1, weight=None):
         """Carry out iterative betweenness centrality targeted attack on nodes. 
 
         Arguments:
             nattacks: Number of attacks to be carried out
-            weighted: If weighted is true, use weighted betweenness centrality.
+            weight: If weighted is not none, use weighted efficiency measure
 
         Reference:
             Petter Holme, Beom Jun Kim, Chang No Yoon, and Seung Kee Han
@@ -334,31 +334,24 @@ class Infrastructure:
         graph_attacked = copy.deepcopy(self.graph)
         nodes_attacked = [0]  # list with coordinates of attacked nodes
 
-        if weighted:
-            # network functioning measure
-            network_measure = [efficiency(graph_attacked)]
-            weight = "weight"
-        else:
-            network_measure = [largest_connected_component(graph_attacked)]
-            weight = None
+        lcc = [largest_connected_component(graph_attacked)]
+        eff = [efficiency(graph_attacked, weight)]
 
         for _ in range(nattacks):
             bc = betweenness_centrality(graph_attacked, weight)
             graph_attacked.remove_node(bc[0][0])
             nodes_attacked.append(bc[0][0])
-            if weighted:
-                network_measure.append(efficiency(graph_attacked))
-            else:
-                network_measure.append(largest_connected_component(graph_attacked))
+            lcc.append(largest_connected_component(graph_attacked))
+            eff.append(efficiency(graph_attacked, weight))
 
-        return graph_attacked, nodes_attacked, network_measure
+        return graph_attacked, nodes_attacked, lcc, eff
 
-    def edge_betweenness_centrality_attack(self, nattacks=1, weighted=False):
+    def edge_betweenness_centrality_attack(self, nattacks=1, weight=None):
         """Carry out iterative betweenness centrality targeted attack on edges.
 
         Arguments:
             nattacks: Number of attacks to be carried out
-            weighted: If weighted is true, use weighted betweenness centrality.
+            weighted: If weighted is not none, use weighted betweenness centrality.
 
         Reference:
             Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative analysis of 
@@ -374,31 +367,24 @@ class Infrastructure:
         graph_attacked = copy.deepcopy(self.graph)
         edges_attacked = [0]  # list with coordinates of attacked edges
 
-        if weighted:
-            # network functioning measure
-            network_measure = [efficiency(graph_attacked)]
-            weight = "weight"
-        else:
-            network_measure = [largest_connected_component(graph_attacked)]
-            weight = None
+        lcc = [largest_connected_component(graph_attacked)]
+        eff = [efficiency(graph_attacked, weight)]
 
         for _ in range(nattacks):
             bc = edge_betweenness_centrality(graph_attacked, weight)
             graph_attacked.remove_edge(bc[0][0][0], bc[0][0][1])
             edges_attacked.append(bc[0][0])
-            if weighted:
-                network_measure.append(efficiency(graph_attacked))
-            else:
-                network_measure.append(largest_connected_component(graph_attacked))
+            lcc.append(largest_connected_component(graph_attacked))
+            eff.append(efficiency(graph_attacked, weight))
 
-        return graph_attacked, edges_attacked, network_measure
+        return graph_attacked, edges_attacked, lcc, eff
 
-    def random_attack(self, nattacks=1, weighted=False):
+    def random_attack(self, nattacks=1, weight=None):
         """Carry out random attack on nodes.
 
         Arguments:
             nattacks: Number of attacks to be carried out
-            weighted: If weighted is true, use efficiency as network functionality measure
+            weighted: If weighted is not none, use weighted efficiency measure
         """
         if nattacks < 1:
             nattacks = 1
@@ -409,29 +395,24 @@ class Infrastructure:
         graph_attacked = copy.deepcopy(self.graph)
         nodes_attacked = [0]  # list with coordinates of attacked nodes
 
-        if weighted:
-            # network functioning measure
-            network_measure = [efficiency(graph_attacked)]
-        else:
-            network_measure = [largest_connected_component(graph_attacked)]
+        lcc = [largest_connected_component(graph_attacked)]
+        eff = [efficiency(graph_attacked, weight)]
 
         for _ in range(nattacks):
             node = rd.sample(list(graph_attacked.nodes), 1)
             graph_attacked.remove_node(node[0])
             nodes_attacked.append(node[0])
-            if weighted:
-                network_measure.append(efficiency(graph_attacked))
-            else:
-                network_measure.append(largest_connected_component(graph_attacked))
+            lcc.append(largest_connected_component(graph_attacked))
+            eff.append(efficiency(graph_attacked, weight))
 
-        return graph_attacked, nodes_attacked, network_measure
+        return graph_attacked, nodes_attacked, lcc, eff
 
-    def edge_random_attack(self, nattacks=1, weighted=False):
+    def edge_random_attack(self, nattacks=1, weight=None):
         """Carry out random attack on edges.
 
         Arguments:
             nattacks: Number of attacks to be carried out
-            weighted: If weighted is true, use efficiency as network functionality measure
+            weighted: If weighted is not none, use weighted efficiency measure
         """
         if nattacks < 1:
             nattacks = 1
@@ -442,22 +423,17 @@ class Infrastructure:
         graph_attacked = copy.deepcopy(self.graph)
         edges_attacked = [0]  # list with coordinates of attacked edges
 
-        if weighted:
-            # network functioning measure
-            network_measure = [efficiency(graph_attacked)]
-        else:
-            network_measure = [largest_connected_component(graph_attacked)]
+        lcc = [largest_connected_component(graph_attacked)]
+        eff = [efficiency(graph_attacked, weight)]
 
         for _ in range(nattacks):
             edge = rd.sample(list(graph_attacked), 1)
             graph_attacked.remove_edge(edge[0][0], edge[0][1])
             edges_attacked.append(edge[0])
-            if weighted:
-                network_measure.append(efficiency(graph_attacked))
-            else:
-                network_measure.append(largest_connected_component(graph_attacked))
+            lcc.append(largest_connected_component(graph_attacked))
+            eff.append(efficiency(graph_attacked, weight))
 
-        return graph_attacked, edges_attacked, network_measure
+        return graph_attacked, edges_attacked, lcc, eff
 
     def plot(self, filename=None, figsize=(12, 12), dpi=300, add_basemap=False, **kwargs):
         """Plot original infrastructure grid."""
