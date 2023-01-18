@@ -338,7 +338,7 @@ class Infrastructure:
         eff = [efficiency(graph_attacked, weight)]
 
         for _ in range(nattacks):
-            bc = betweenness_centrality(graph_attacked, weight)
+            bc = betweenness_centrality(graph_attacked) # use unweighted 
             graph_attacked.remove_node(bc[0][0])
             nodes_attacked.append(bc[0][0])
             lcc.append(largest_connected_component(graph_attacked))
