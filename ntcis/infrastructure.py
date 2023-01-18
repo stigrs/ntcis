@@ -27,21 +27,27 @@ def efficiency(graph, weight=None):
     """Return efficiency of the infrastructure grid.
 
     Reference:
-        Eq. (3) in Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative 
-        analysis of link removal strategies in real complex weighted networks. 
-        Sci Rep 10, 3911 (2020). https://doi.org/10.1038/s41598-020-60298-7
+        * Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative 
+          analysis of link removal strategies in real complex weighted networks. 
+          Sci Rep 10, 3911 (2020). https://doi.org/10.1038/s41598-020-60298-7
+        * Latora, V., and Marchiori, M. (2001). Efficient behavior of
++         small-world networks. Physical Review Letters 87.
++       * Latora, V., and Marchiori, M. (2003). Economic small-world behavior
++         in weighted networks. Eur Phys J B 32, 249-263.
     """
-    sum_dij = 0.0
-    for i in graph.nodes:
-        for j in graph.nodes:
-            if i is not j:
-                try:
-                    dij = 1.0 / nx.shortest_path_length(graph, source=i, target=j, weight=weight)
-                except nx.NetworkXNoPath: # shortest path length is infinite
-                    dij = 0.0
-                sum_dij += dij
     n = graph.number_of_nodes()
-    eff = sum_dij / (n * (n - 1))
+    if n < 2:
+        eff = 0
+    else:
+        inv_d = []
+        for node in graph:
+            if weight is None:
+                dij = nx.single_source_shortest_path_length(graph, node)
+            else:
+                dij = nx.single_source_dijkstra_path_length(graph, node, weight=weight)
+            inv_dij = [1/d for d in dij.values() if d != 0]
+            inv_d.extend(inv_dij)
+        eff = sum(inv_d) / (n * (n - 1))
     return eff
 
 
