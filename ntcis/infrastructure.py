@@ -16,7 +16,6 @@ import momepy
 import operator
 import pygeos
 import copy
-from numba import jit
 
 
 def largest_connected_component(graph):
@@ -24,7 +23,6 @@ def largest_connected_component(graph):
     return len(max(nx.connected_components(graph), key=len))
 
 
-@jit(nopython=True)
 def efficiency(graph, weight=None):
     """Return efficiency of the infrastructure grid.
 
