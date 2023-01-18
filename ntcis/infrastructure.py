@@ -433,7 +433,7 @@ class Infrastructure:
         eff = [efficiency(graph_attacked, weight)]
 
         for _ in range(nattacks):
-            edge = rd.sample(list(graph_attacked), 1)
+            edge = rd.sample(list(graph_attacked.edges), 1)
             graph_attacked.remove_edge(edge[0][0], edge[0][1])
             edges_attacked.append(edge[0])
             lcc.append(largest_connected_component(graph_attacked))
