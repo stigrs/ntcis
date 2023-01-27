@@ -23,17 +23,22 @@ def largest_connected_component(graph):
     return len(max(nx.connected_components(graph), key=len))
 
 
+def largest_connected_component_subgraph(graph):
+    """Return largest connected component as a subgraph."""
+    lcc = max(nx.connected_components(graph), key=len)
+    return graph.subgraph(lcc).copy()
+
 def efficiency(graph, weight=None):
-    """Return efficiency of the infrastructure grid.
+    """Return global efficiency of the infrastructure grid.
 
     Reference:
-        * Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative 
+        - Latora, V., and Marchiori, M. (2001). Efficient behavior of
+          small-world networks. Physical Review Letters 87.
+        - Latora, V., and Marchiori, M. (2003). Economic small-world behavior
+          in weighted networks. Eur Phys J B 32, 249-263.
+        - Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative 
           analysis of link removal strategies in real complex weighted networks. 
           Sci Rep 10, 3911 (2020). https://doi.org/10.1038/s41598-020-60298-7
-        * Latora, V., and Marchiori, M. (2001). Efficient behavior of
-+         small-world networks. Physical Review Letters 87.
-+       * Latora, V., and Marchiori, M. (2003). Economic small-world behavior
-+         in weighted networks. Eur Phys J B 32, 249-263.
     """
     n = graph.number_of_nodes()
     if n < 2:
@@ -51,9 +56,10 @@ def efficiency(graph, weight=None):
     return eff
 
 
-def degree_centrality(graph):
+def degree_centrality(graph, weight=None):
     """Compute degree centrality for the nodes."""
-    degree = nx.degree_centrality(graph)
+    # weight is not used, but included to have the same API for centrality methods.
+    degree = nx.degree_centrality(graph) 
     sorted_degree = sorted(degree.items(), key=operator.itemgetter(1), reverse=True)
     return sorted_degree
 
@@ -65,12 +71,18 @@ def betweenness_centrality(graph, weight=None):
     return sorted_betweenness
 
 
+def edge_betweenness_centrality(graph, weight=None):
+    """Compute betweenness centrality for the edges."""
+    betweenness = nx.edge_betweenness_centrality(graph, weight=weight)
+    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=True)
+    return sorted_betweenness
+
 def current_flow_betweenness_centrality(graph, weight=None):
     """Compute current flow betweenness centrality for the nodes.
     
     If graph is not connected, compute current flow betweenness centrality for the nodes
     of the largest connected component."""
-    if graph.is_connected():
+    if nx.is_connected(graph):
         betweenness = nx.current_flow_betweenness_centrality(graph, weight=weight)
     else:
         lcc = max(nx.connected_components(graph), key=len)
@@ -80,19 +92,12 @@ def current_flow_betweenness_centrality(graph, weight=None):
     return sorted_betweenness
 
 
-def edge_betweenness_centrality(graph, weight=None):
-    """Compute betweenness centrality for the edges."""
-    betweenness = nx.edge_betweenness_centrality(graph, weight=weight)
-    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=True)
-    return sorted_betweenness
-
-
 def edge_current_flow_betweenness_centrality(graph, weight=None):
     """Compute current flow betweenness centrality for the edges.
     
-    If graph is not connected, compute current flow betweenness centrality for the edges
+    If graph is not connected, compute current flow betweenness centrality for the nodes
     of the largest connected component."""
-    if graph.is_connected():
+    if nx.is_connected(graph):
         betweenness = nx.edge_current_flow_betweenness_centrality(graph, weight=weight)
     else:
         lcc = max(nx.connected_components(graph), key=len)
@@ -152,6 +157,10 @@ class Infrastructure:
             self.grid["weight"] = 1.0 / self.grid[capacity] 
         self.graph = momepy.gdf_to_nx(self.grid, multigraph=multigraph, directed=False)
 
+    def get_graph(self):
+        """Return a deep copy of the graph."""
+        return copy.deepcopy(self.graph) 
+
     def close_gaps(self, tolerance):
         """Close gaps in LineString geometry where it should be contiguous.
         Snaps both lines to a centroid of a gap in between."""
@@ -186,6 +195,8 @@ class Infrastructure:
         # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
         # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+        # Available from: https://github.com/urbangrammarai/spatial_signatures.git
+
         geom = self.grid.geometry.values.data
         coords = pygeos.get_coordinates(geom)
         indices = pygeos.get_num_coordinates(geom)
@@ -216,6 +227,10 @@ class Infrastructure:
         """Return largest connected component."""
         return largest_connected_component(self.graph)
 
+    def largest_connected_component_subgraph(self):
+        """Return largest connected component as subgraph."""
+        return largest_connected_component_subgraph(self.graph)
+
     def efficiency(self, weight=None):
         """Return the efficiency of the network."""
         return efficiency(self.graph, weight=weight)
@@ -224,71 +239,94 @@ class Infrastructure:
         """Compute degree centrality for the nodes."""
         return degree_centrality(self.graph)
 
-    def print_degree_centrality(self):
-        """Print node degree centrality."""
-        print("Node Degree Centrality (top ten):")
-        print("-" * 50)
-        print("{0:<35}\t{1}".format("Node", "Value"))
-        print("-" * 50)
-        i = 1
-        for v, c in self.degree_centrality():
-            print("({0[0]:.6f}, {0[1]:.6f})\t\t{1:.8f}".format(v, c))
-            if i >= 10:
-                break
-            i += 1
-        print("-" * 50)
-
     def betweenness_centrality(self, weight=None):
         """Compute betweenness centrality for the nodes."""
         return betweenness_centrality(self.graph, weight)
-
-    def print_betweenness_centrality(self, weight=None):
-        """Print node betweenness centrality."""
-        print("Node Betweenness Centrality (top ten):")
-        print("-" * 50)
-        print("{0:<35}\t{1}".format("Node", "Value"))
-        print("-" * 50)
-        i = 1
-        for v, c in self.betweenness_centrality(weight):
-            print("({0[0]:.6f}, {0[1]:.6f})\t\t{1:.8f}".format(v, c))
-            if i >= 10:
-                break
-            i += 1
-        print("-" * 50)
 
     def edge_betweenness_centrality(self, weight=None):
         """Compute betweenness centrality for the edges."""
         return edge_betweenness_centrality(self.graph, weight)
 
-    def print_edge_betweenness_centrality(self, weight):
-        """Print edge betweenness centrality."""
-        print("Edge Betweenness Centrality (top ten):")
-        print("-" * 90)
-        print("{0:<35}\t{1:<35}\t{2}".format("Node A", "Node B", "Value"))
-        print("-" * 90)
-        i = 1
-        for v, c in self.edge_betweenness_centrality(weight):
-            print("({0[0]:.6f}, {0[1]:.6f})\t\t({1[0]:.6f}, {1[1]:.6f})\t\t{2:.8f}".format(v[0], v[1], c))
-            if i >= 10:
-                break
-            i += 1
-        print("-" * 90)
+    def current_flow_betweenness_centrality(self, weight=None):
+        """Compute current flow betweenness centrality for the nodes."""
+        return current_flow_betweenness_centrality(self.graph, weight=None) 
+
+    def edge_current_flow_betweenness_centrality(self, weight=None):
+        """Compute current flow betweenness centrality for the edges."""
+        return edge_current_flow_betweenness_centrality(self.graph, weight=None) 
 
     def articulation_points(self):
         """Find the articulation points of the topology."""
         return articulation_points(self.graph)
 
-    def print_articulation_points(self):
-        """Print articulation points of the topology."""
-        print("Articulation Points (top ten):")
-        print("-" * 31)
-        i = 1
-        for point in self.articulation_points():
-            print("({0[0]:.6f}, {0[1]:.6f})".format(point))
-            if i >= 10:
-                break
-            i += 1
-        print("-" * 31)
+    def node_iterative_centrality_attack(self, nattacks=1, weight=None, centrality_method=betweenness_centrality):
+        """Carry out iterative targeted attack on nodes. 
+
+        Arguments:
+            nattacks: Number of attacks to be carried out
+            weight: If weight is not none, use weighted centrality and efficiency measures
+            centrality_method: Measure used for assessing the centrality of the nodes
+
+        Reference:
+            Petter Holme, Beom Jun Kim, Chang No Yoon, and Seung Kee Han
+            Phys. Rev. E 65, 056109. https://arxiv.org/abs/cond-mat/0202410v1
+        """
+        if nattacks < 1:
+            nattacks = 1
+        if nattacks > len(self.graph.edges):
+            nattacks = len(self.graph.edges)
+
+        graph_attacked = self.get_graph() # work on a local copy of the topology
+        nodes_attacked = [0]  # list with coordinates of attacked nodes
+
+        lcc = [largest_connected_component(graph_attacked)]
+        eff = [efficiency(graph_attacked, weight)]
+
+        weight_centrality = weight
+        if centrality_method == betweenness_centrality:
+            weight_centrality = None # use unweighted
+
+        for _ in range(nattacks):
+            bc = centrality_method(graph_attacked, weight_centrality) 
+            graph_attacked.remove_node(bc[0][0])
+            nodes_attacked.append(bc[0][0])
+            lcc.append(largest_connected_component(graph_attacked))
+            eff.append(efficiency(graph_attacked, weight))
+
+        return graph_attacked, nodes_attacked, lcc, eff
+
+    def edge_iterative_centrality_attack(self, nattacks=1, weight=None, centrality_method=edge_betweenness_centrality):
+        """Carry out iterative targeted attack on edges.
+
+        Arguments:
+            nattacks: Number of attacks to be carried out
+            weight: If weight is not none, use weighted centrality and efficiency measures
+            centrality_method: Measure used for assessing the centrality of the nodes
+
+        Reference:
+            Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative analysis of 
+            link removal strategies in real complex weighted networks. 
+            Sci Rep 10, 3911 (2020). https://doi.org/10.1038/s41598-020-60298-7
+        """
+        if nattacks < 1:
+            nattacks = 1
+        if nattacks > len(self.graph.edges):
+            nattacks = len(self.graph.edges)
+
+        graph_attacked = self.get_graph() # work on a local copy of the topology
+        edges_attacked = [0]  # list with coordinates of attacked edges
+
+        lcc = [largest_connected_component(graph_attacked)]
+        eff = [efficiency(graph_attacked, weight)]
+
+        for _ in range(nattacks):
+            bc = centrality_method(graph_attacked, weight)
+            graph_attacked.remove_edge(bc[0][0][0], bc[0][0][1])
+            edges_attacked.append(bc[0][0])
+            lcc.append(largest_connected_component(graph_attacked))
+            eff.append(efficiency(graph_attacked, weight))
+
+        return graph_attacked, edges_attacked, lcc, eff
 
     def articulation_point_targeted_attack(self, nattacks=1, weight=None):
         """Carry out brute-force articulation point-targeted attack.
@@ -320,71 +358,6 @@ class Infrastructure:
 
         return graph_attacked, nodes_attacked, lcc, eff
 
-    def betweenness_centrality_attack(self, nattacks=1, weight=None):
-        """Carry out iterative betweenness centrality targeted attack on nodes. 
-
-        Arguments:
-            nattacks: Number of attacks to be carried out
-            weight: If weighted is not none, use weighted efficiency measure
-
-        Reference:
-            Petter Holme, Beom Jun Kim, Chang No Yoon, and Seung Kee Han
-            Phys. Rev. E 65, 056109. https://arxiv.org/abs/cond-mat/0202410v1
-        """
-        if nattacks < 1:
-            nattacks = 1
-        if nattacks > len(self.graph.edges):
-            nattacks = len(self.graph.edges)
-
-        # work on a local copy of the topology
-        graph_attacked = copy.deepcopy(self.graph)
-        nodes_attacked = [0]  # list with coordinates of attacked nodes
-
-        lcc = [largest_connected_component(graph_attacked)]
-        eff = [efficiency(graph_attacked, weight)]
-
-        for _ in range(nattacks):
-            bc = betweenness_centrality(graph_attacked) # use unweighted 
-            graph_attacked.remove_node(bc[0][0])
-            nodes_attacked.append(bc[0][0])
-            lcc.append(largest_connected_component(graph_attacked))
-            eff.append(efficiency(graph_attacked, weight))
-
-        return graph_attacked, nodes_attacked, lcc, eff
-
-    def edge_betweenness_centrality_attack(self, nattacks=1, weight=None):
-        """Carry out iterative betweenness centrality targeted attack on edges.
-
-        Arguments:
-            nattacks: Number of attacks to be carried out
-            weighted: If weighted is not none, use weighted betweenness centrality.
-
-        Reference:
-            Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative analysis of 
-            link removal strategies in real complex weighted networks. 
-            Sci Rep 10, 3911 (2020). https://doi.org/10.1038/s41598-020-60298-7
-        """
-        if nattacks < 1:
-            nattacks = 1
-        if nattacks > len(self.graph.edges):
-            nattacks = len(self.graph.edges)
-
-        # work on a local copy of the topology
-        graph_attacked = copy.deepcopy(self.graph)
-        edges_attacked = [0]  # list with coordinates of attacked edges
-
-        lcc = [largest_connected_component(graph_attacked)]
-        eff = [efficiency(graph_attacked, weight)]
-
-        for _ in range(nattacks):
-            bc = edge_betweenness_centrality(graph_attacked, weight)
-            graph_attacked.remove_edge(bc[0][0][0], bc[0][0][1])
-            edges_attacked.append(bc[0][0])
-            lcc.append(largest_connected_component(graph_attacked))
-            eff.append(efficiency(graph_attacked, weight))
-
-        return graph_attacked, edges_attacked, lcc, eff
-
     def random_attack(self, nattacks=1, weight=None):
         """Carry out random attack on nodes.
 
@@ -397,8 +370,7 @@ class Infrastructure:
         if nattacks > len(self.graph.edges):
             nattacks = len(self.graph.edges)
 
-        # work on a local copy of the topology
-        graph_attacked = copy.deepcopy(self.graph)
+        graph_attacked = copy.deepcopy(self.graph) # work on a local copy of the topology
         nodes_attacked = [0]  # list with coordinates of attacked nodes
 
         lcc = [largest_connected_component(graph_attacked)]
@@ -425,8 +397,7 @@ class Infrastructure:
         if nattacks > len(self.graph.edges):
             nattacks = len(self.graph.edges)
 
-        # work on a local copy of the topology
-        graph_attacked = copy.deepcopy(self.graph)
+        graph_attacked = copy.deepcopy(self.graph) # work on a local copy of the topology
         edges_attacked = [0]  # list with coordinates of attacked edges
 
         lcc = [largest_connected_component(graph_attacked)]
@@ -441,15 +412,70 @@ class Infrastructure:
 
         return graph_attacked, edges_attacked, lcc, eff
 
-    def plot(self, filename=None, figsize=(12, 12), dpi=300, add_basemap=False, **kwargs):
+    def print_degree_centrality(self):
+        """Print node degree centrality."""
+        print("Node Degree Centrality (top ten):")
+        print("-" * 50)
+        print("{0:<35}\t{1}".format("Node", "Value"))
+        print("-" * 50)
+        i = 1
+        for v, c in self.degree_centrality():
+            print("({0[0]:.6f}, {0[1]:.6f})\t\t{1:.8f}".format(v, c))
+            if i >= 10:
+                break
+            i += 1
+        print("-" * 50)
+
+    def print_betweenness_centrality(self, weight=None):
+        """Print node betweenness centrality."""
+        print("Node Betweenness Centrality (top ten):")
+        print("-" * 50)
+        print("{0:<35}\t{1}".format("Node", "Value"))
+        print("-" * 50)
+        i = 1
+        for v, c in self.betweenness_centrality(weight):
+            print("({0[0]:.6f}, {0[1]:.6f})\t\t{1:.8f}".format(v, c))
+            if i >= 10:
+                break
+            i += 1
+        print("-" * 50)
+
+    def print_edge_betweenness_centrality(self, weight):
+        """Print edge betweenness centrality."""
+        print("Edge Betweenness Centrality (top ten):")
+        print("-" * 90)
+        print("{0:<35}\t{1:<35}\t{2}".format("Node A", "Node B", "Value"))
+        print("-" * 90)
+        i = 1
+        for v, c in self.edge_betweenness_centrality(weight):
+            print("({0[0]:.6f}, {0[1]:.6f})\t\t({1[0]:.6f}, {1[1]:.6f})\t\t{2:.8f}".format(v[0], v[1], c))
+            if i >= 10:
+                break
+            i += 1
+        print("-" * 90)
+
+    def print_articulation_points(self):
+        """Print articulation points of the topology."""
+        print("Articulation Points (top ten):")
+        print("-" * 31)
+        i = 1
+        for point in self.articulation_points():
+            print("({0[0]:.6f}, {0[1]:.6f})".format(point))
+            if i >= 10:
+                break
+            i += 1
+        print("-" * 31)
+
+    def plot(self, filename=None, figsize=(12, 12), dpi=300, xlabel="East", ylabel="North", add_basemap=False,
+             provider=ctx.providers.OpenStreetMap.Mapnik, **kwargs):
         """Plot original infrastructure grid."""
         _, ax = plt.subplots(figsize=figsize)
         self.grid.plot(ax=ax, **kwargs)
         if add_basemap:
-            ctx.add_basemap(ax, crs=self.grid.crs)
+            ctx.add_basemap(ax, crs=self.grid.crs, source=provider)
         plt.tight_layout()
-        plt.ylabel("North")
-        plt.xlabel("East")
+        plt.ylabel(ylabel)
+        plt.xlabel(xlabel)
         if filename:
             plt.savefig(filename, dpi=dpi)
         return ax
