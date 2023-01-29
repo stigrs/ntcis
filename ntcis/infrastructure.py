@@ -161,66 +161,20 @@ class Infrastructure:
         """Return a deep copy of the graph."""
         return copy.deepcopy(self.graph) 
 
+    def remove_false_nodes(self):
+        """Clean topology of existing LineString geometry by removal of nodes of degree 2."""
+        self.grid = momepy.remove_false_nodes(self.grid)
+        self.graph = momepy.gdf_to_nx(self.grid, multigraph=self.__multigraph, directed=False)
+
     def close_gaps(self, tolerance):
         """Close gaps in LineString geometry where it should be contiguous.
         Snaps both lines to a centroid of a gap in between."""
+        self.grid.geometry = momepy.close_gaps(self.grid, tolerance)
+        self.graph = momepy.gdf_to_nx(self.grid, multigraph=self.__multigraph, directed=False)
 
-        # BSD 3-Clause License
-        #
-        # Copyright (c) 2020, Urban Grammar
-        # All rights reserved.
-        #
-        # Redistribution and use in source and binary forms, with or without
-        # modification, are permitted provided that the following conditions are met:
-        #
-        # 1. Redistributions of source code must retain the above copyright notice, this
-        #    list of conditions and the following disclaimer.
-        #
-        # 2. Redistributions in binary form must reproduce the above copyright notice,
-        #    this list of conditions and the following disclaimer in the documentation
-        #    and/or other materials provided with the distribution.
-        #
-        # 3. Neither the name of the copyright holder nor the names of its
-        #    contributors may be used to endorse or promote products derived from
-        #    this software without specific prior written permission.
-        #
-        # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-        # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-        # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-        # DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-        # FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-        # DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-        # SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-        # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-        # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-        # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-        # Available from: https://github.com/urbangrammarai/spatial_signatures.git
-
-        geom = self.grid.geometry.values.data
-        coords = pygeos.get_coordinates(geom)
-        indices = pygeos.get_num_coordinates(geom)
-
-        # Generate a list of start and end coordinates and create point geometries
-        edges = [0]
-        i = 0
-        for ind in indices:
-            ix = i + ind
-            edges.append(ix - 1)
-            edges.append(ix)
-            i = ix
-        edges = edges[:-1]
-        points = pygeos.points(np.unique(coords[edges], axis=0))
-        buffered = pygeos.buffer(points, tolerance)
-        dissolved = pygeos.union_all(buffered)
-
-        exploded = [
-            pygeos.get_geometry(dissolved, i)
-            for i in range(pygeos.get_num_geometries(dissolved))
-        ]
-
-        centroids = pygeos.centroid(exploded)
-        self.grid.geometry.values.data = pygeos.snap(geom, pygeos.union_all(centroids), tolerance)
+    def extend_lines(self, tolerance):
+        """Extends unjoined ends of LineString segments to join with other segments within a set tolerance."""
+        self.grid = momepy.extend_lines(self.grid, tolerance)
         self.graph = momepy.gdf_to_nx(self.grid, multigraph=self.__multigraph, directed=False)
 
     def largest_connected_component(self):
