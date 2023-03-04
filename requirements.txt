@@ -5,4 +5,5 @@ pandas
 geopandas
 momepy
 contextily
-pygeos
+pathlib
+shapely

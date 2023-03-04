@@ -9,13 +9,15 @@
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import pandas as pd
 import geopandas as gpd
 import contextily as ctx
 import random as rd
 import momepy
 import operator
-import pygeos
 import copy
+import pathlib
+from shapely import wkt
 
 
 def largest_connected_component(graph):
@@ -138,13 +140,18 @@ class Infrastructure:
         self.graph = None
         self.grid = None
         self.__multigraph = multigraph
-        self.load(filename, multigraph, explode, capacity)
-        if epsg:
-            self.grid.to_crs(epsg)
+        self.load(filename, multigraph, explode, capacity, epsg)
 
-    def load(self, filename, multigraph=False, explode=False, capacity=None):
+    def load(self, filename, multigraph=False, explode=False, capacity=None, epsg=None):
         """Load geodata for infrastructure grid from file (e.g. GEOJSON format)."""
-        self.grid = gpd.read_file(filename)
+        if pathlib.Path(filename).suffix == ".csv":
+            df = pd.read_csv(filename)
+            df["geometry"] = df["geometry"].apply(wkt.loads)
+            self.grid = gpd.GeoDataFrame(df, crs=epsg)
+        else: # assume it is a format geopandas can read directly
+            self.grid = gpd.read_file(filename)
+            if epsg:
+                self.grid.to_crs(epsg)
         self.__multigraph = multigraph
         if explode:
             self.grid = self.grid.explode()
