@@ -127,7 +127,7 @@ def plot_topology(graph, filename=None, figsize=(12, 12), node_size=5, dpi=300):
 class Infrastructure:
     """Class for representing network topology of infrastructure grids."""
 
-    def __init__(self, filename, multigraph=False, explode=False, epsg=None, capacity=None):
+    def __init__(self, filename, multigraph=False, explode=False, capacity=None, epsg=None):
         """Initialise infrastructure.
 
         Arguments:
