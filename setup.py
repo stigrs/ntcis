@@ -15,7 +15,7 @@ with open("requirements.txt", "r") as fh:
 
 setuptools.setup(
     name="ntcis",
-    version="0.1.dev0",
+    version="0.1.0",
     author="Stig Rune Sellevag",
     author_email="stig-rune.sellevag@ffi.no",
     license="MIT License",
