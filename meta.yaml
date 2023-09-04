@@ -1,0 +1,38 @@
+{% set version = "0.1.0" %}
+
+package:
+  name: ntcis
+  version: {{ version }}
+
+source:
+  git_url: https://github.com/stigrs/ntcis.git
+
+build:
+  noarch: python
+  number: 0
+  script: python -m pip install .
+
+requirements:
+  host:
+    - python
+    - pip
+  run:
+    - python
+    - numpy
+    - networkx
+    - matplotlib
+    - pandas
+    - geopandas
+    - momepy
+    - contextily
+    - pathlib
+    - shapely
+
+about:
+  home: https://github.com/stigrs/ntcis
+  license: MIT
+  summary: "Network Topology of Critical Infrastructure Systems (NTCIS)"
+  description: |
+    Simple library for representing the network topology of critical
+    infrastructure systems.
+  dev_url: https://github.com/stigrs/ntcis
