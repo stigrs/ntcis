@@ -30,6 +30,7 @@ def largest_connected_component_subgraph(graph):
     lcc = max(nx.connected_components(graph), key=len)
     return graph.subgraph(lcc).copy()
 
+
 def efficiency(graph, weight=None):
     """Return global efficiency of the infrastructure grid.
 
@@ -38,8 +39,8 @@ def efficiency(graph, weight=None):
           small-world networks. Physical Review Letters 87.
         - Latora, V., and Marchiori, M. (2003). Economic small-world behavior
           in weighted networks. Eur Phys J B 32, 249-263.
-        - Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative 
-          analysis of link removal strategies in real complex weighted networks. 
+        - Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative
+          analysis of link removal strategies in real complex weighted networks.
           Sci Rep 10, 3911 (2020). https://doi.org/10.1038/s41598-020-60298-7
     """
     n = graph.number_of_nodes()
@@ -52,7 +53,7 @@ def efficiency(graph, weight=None):
                 dij = nx.single_source_shortest_path_length(graph, node)
             else:
                 dij = nx.single_source_dijkstra_path_length(graph, node, weight=weight)
-            inv_dij = [1/d for d in dij.values() if d != 0]
+            inv_dij = [1 / d for d in dij.values() if d != 0]
             inv_d.extend(inv_dij)
         eff = sum(inv_d) / (n * (n - 1))
     return eff
@@ -61,7 +62,7 @@ def efficiency(graph, weight=None):
 def degree_centrality(graph, weight=None):
     """Compute degree centrality for the nodes."""
     # weight is not used, but included to have the same API for centrality methods.
-    degree = nx.degree_centrality(graph) 
+    degree = nx.degree_centrality(graph)
     sorted_degree = sorted(degree.items(), key=operator.itemgetter(1), reverse=True)
     return sorted_degree
 
@@ -69,19 +70,24 @@ def degree_centrality(graph, weight=None):
 def betweenness_centrality(graph, weight=None):
     """Compute betweenness centrality for the nodes."""
     betweenness = nx.betweenness_centrality(graph, weight)
-    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=True)
+    sorted_betweenness = sorted(
+        betweenness.items(), key=operator.itemgetter(1), reverse=True
+    )
     return sorted_betweenness
 
 
 def edge_betweenness_centrality(graph, weight=None):
     """Compute betweenness centrality for the edges."""
     betweenness = nx.edge_betweenness_centrality(graph, weight=weight)
-    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=True)
+    sorted_betweenness = sorted(
+        betweenness.items(), key=operator.itemgetter(1), reverse=True
+    )
     return sorted_betweenness
+
 
 def current_flow_betweenness_centrality(graph, weight=None):
     """Compute current flow betweenness centrality for the nodes.
-    
+
     If graph is not connected, compute current flow betweenness centrality for the nodes
     of the largest connected component."""
     if nx.is_connected(graph):
@@ -90,13 +96,15 @@ def current_flow_betweenness_centrality(graph, weight=None):
         lcc = max(nx.connected_components(graph), key=len)
         subgraph = graph.subgraph(lcc).copy()
         betweenness = nx.current_flow_betweenness_centrality(subgraph, weight=weight)
-    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=True)
+    sorted_betweenness = sorted(
+        betweenness.items(), key=operator.itemgetter(1), reverse=True
+    )
     return sorted_betweenness
 
 
 def edge_current_flow_betweenness_centrality(graph, weight=None):
     """Compute current flow betweenness centrality for the edges.
-    
+
     If graph is not connected, compute current flow betweenness centrality for the nodes
     of the largest connected component."""
     if nx.is_connected(graph):
@@ -104,14 +112,42 @@ def edge_current_flow_betweenness_centrality(graph, weight=None):
     else:
         lcc = max(nx.connected_components(graph), key=len)
         subgraph = graph.subgraph(lcc).copy()
-        betweenness = nx.edge_current_flow_betweenness_centrality(subgraph, weight=weight)
-    sorted_betweenness = sorted(betweenness.items(), key=operator.itemgetter(1), reverse=True)
+        betweenness = nx.edge_current_flow_betweenness_centrality(
+            subgraph, weight=weight
+        )
+    sorted_betweenness = sorted(
+        betweenness.items(), key=operator.itemgetter(1), reverse=True
+    )
     return sorted_betweenness
 
 
 def articulation_points(graph):
     """Find the articulation points of the topology."""
     return list(nx.articulation_points(graph.to_undirected()))
+
+
+def plot_grid(
+    grid,
+    filename=None,
+    figsize=(12, 12),
+    dpi=300,
+    xlabel="East",
+    ylabel="North",
+    add_basemap=False,
+    provider=ctx.providers.OpenStreetMap.Mapnik,
+    **kwargs
+):
+    """Plot original infrastructure grid."""
+    _, ax = plt.subplots(figsize=figsize)
+    grid.plot(ax=ax, **kwargs)
+    if add_basemap:
+        ctx.add_basemap(ax, crs=grid.crs, source=provider)
+    plt.tight_layout()
+    plt.ylabel(ylabel)
+    plt.xlabel(xlabel)
+    if filename:
+        plt.savefig(filename, dpi=dpi)
+    return ax
 
 
 def plot_topology(graph, filename=None, figsize=(12, 12), node_size=5, dpi=300):
@@ -124,10 +160,49 @@ def plot_topology(graph, filename=None, figsize=(12, 12), node_size=5, dpi=300):
         plt.savefig(filename, dpi=dpi)
 
 
+def plot_attack_results(
+    nattacks,
+    E_target,
+    E_random_avg,
+    E_random_std,
+    xlabel,
+    ylabel,
+    attack_labels=["targeted", "random"],
+    filename=None,
+    dpi=300,
+):
+    """Function for plotting attack results."""
+    _, ax = plt.subplots()
+
+    ax.plot(nattacks, E_target, "-bo", label=attack_labels[0])
+    ax.plot(nattacks, E_random_avg, "--r^", label=attack_labels[1])
+    ax.fill_between(
+        nattacks,
+        E_random_avg - E_random_std,
+        np.clip(E_random_avg + E_random_std, a_min=0.0, a_max=1.0),
+        alpha=0.2,
+        color="gray",
+    )
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.xticks(np.arange(0, max(nattacks) + 1, 1.0))
+
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
+
+    # Put a legend below current axis
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), fancybox=True, ncol=2)
+
+    if filename:
+        plt.savefig(filename, dpi=dpi)
+
+
 class Infrastructure:
     """Class for representing network topology of infrastructure grids."""
 
-    def __init__(self, filename, multigraph=False, explode=False, capacity=None, epsg=None):
+    def __init__(
+        self, filename, multigraph=False, explode=False, capacity=None, epsg=None
+    ):
         """Initialise infrastructure.
 
         Arguments:
@@ -148,7 +223,7 @@ class Infrastructure:
             df = pd.read_csv(filename)
             df["geometry"] = df["geometry"].apply(wkt.loads)
             self.grid = gpd.GeoDataFrame(df, crs=epsg)
-        else: # assume it is a format geopandas can read directly
+        else:  # assume it is a format geopandas can read directly
             self.grid = gpd.read_file(filename)
             if epsg:
                 self.grid.to_crs(epsg)
@@ -157,32 +232,44 @@ class Infrastructure:
             self.grid = self.grid.explode()
         if capacity:
             # avoid division by zero, NaN or Inf
-            self.grid[capacity] = self.grid[capacity].replace(to_replace=np.inf, value=np.finfo(float).max)
-            self.grid[capacity] = self.grid[capacity].replace(to_replace=np.nan, value=np.finfo(float).eps)
-            self.grid[capacity] = self.grid[capacity].replace(to_replace=0.0, value=np.finfo(float).eps)
+            self.grid[capacity] = self.grid[capacity].replace(
+                to_replace=np.inf, value=np.finfo(float).max
+            )
+            self.grid[capacity] = self.grid[capacity].replace(
+                to_replace=np.nan, value=np.finfo(float).eps
+            )
+            self.grid[capacity] = self.grid[capacity].replace(
+                to_replace=0.0, value=np.finfo(float).eps
+            )
             # shortest path weights are calculated as the resiprocal of the capacity
-            self.grid["weight"] = 1.0 / self.grid[capacity] 
+            self.grid["weight"] = 1.0 / self.grid[capacity]
         self.graph = momepy.gdf_to_nx(self.grid, multigraph=multigraph, directed=False)
 
     def get_graph(self):
         """Return a deep copy of the graph."""
-        return copy.deepcopy(self.graph) 
+        return copy.deepcopy(self.graph)
 
     def remove_false_nodes(self):
         """Clean topology of existing LineString geometry by removal of nodes of degree 2."""
         self.grid = momepy.remove_false_nodes(self.grid)
-        self.graph = momepy.gdf_to_nx(self.grid, multigraph=self.__multigraph, directed=False)
+        self.graph = momepy.gdf_to_nx(
+            self.grid, multigraph=self.__multigraph, directed=False
+        )
 
     def close_gaps(self, tolerance):
         """Close gaps in LineString geometry where it should be contiguous.
         Snaps both lines to a centroid of a gap in between."""
         self.grid.geometry = momepy.close_gaps(self.grid, tolerance)
-        self.graph = momepy.gdf_to_nx(self.grid, multigraph=self.__multigraph, directed=False)
+        self.graph = momepy.gdf_to_nx(
+            self.grid, multigraph=self.__multigraph, directed=False
+        )
 
     def extend_lines(self, tolerance):
         """Extends unjoined ends of LineString segments to join with other segments within a set tolerance."""
         self.grid = momepy.extend_lines(self.grid, tolerance)
-        self.graph = momepy.gdf_to_nx(self.grid, multigraph=self.__multigraph, directed=False)
+        self.graph = momepy.gdf_to_nx(
+            self.grid, multigraph=self.__multigraph, directed=False
+        )
 
     def largest_connected_component(self):
         """Return largest connected component."""
@@ -210,18 +297,20 @@ class Infrastructure:
 
     def current_flow_betweenness_centrality(self, weight=None):
         """Compute current flow betweenness centrality for the nodes."""
-        return current_flow_betweenness_centrality(self.graph, weight=None) 
+        return current_flow_betweenness_centrality(self.graph, weight=None)
 
     def edge_current_flow_betweenness_centrality(self, weight=None):
         """Compute current flow betweenness centrality for the edges."""
-        return edge_current_flow_betweenness_centrality(self.graph, weight=None) 
+        return edge_current_flow_betweenness_centrality(self.graph, weight=None)
 
     def articulation_points(self):
         """Find the articulation points of the topology."""
         return articulation_points(self.graph)
 
-    def node_iterative_centrality_attack(self, nattacks=1, weight=None, centrality_method=betweenness_centrality):
-        """Carry out iterative targeted attack on nodes. 
+    def node_iterative_centrality_attack(
+        self, nattacks=1, weight=None, centrality_method=betweenness_centrality
+    ):
+        """Carry out iterative targeted attack on nodes.
 
         Arguments:
             nattacks: Number of attacks to be carried out
@@ -237,7 +326,7 @@ class Infrastructure:
         if nattacks > len(self.graph.edges):
             nattacks = len(self.graph.edges)
 
-        graph_attacked = self.get_graph() # work on a local copy of the topology
+        graph_attacked = self.get_graph()  # work on a local copy of the topology
         nodes_attacked = [0]  # list with coordinates of attacked nodes
 
         lcc = [largest_connected_component(graph_attacked)]
@@ -245,10 +334,10 @@ class Infrastructure:
 
         weight_centrality = weight
         if centrality_method == betweenness_centrality:
-            weight_centrality = None # use unweighted
+            weight_centrality = None  # use unweighted
 
         for _ in range(nattacks):
-            bc = centrality_method(graph_attacked, weight_centrality) 
+            bc = centrality_method(graph_attacked, weight_centrality)
             graph_attacked.remove_node(bc[0][0])
             nodes_attacked.append(bc[0][0])
             lcc.append(largest_connected_component(graph_attacked))
@@ -256,7 +345,9 @@ class Infrastructure:
 
         return graph_attacked, nodes_attacked, lcc, eff
 
-    def edge_iterative_centrality_attack(self, nattacks=1, weight=None, centrality_method=edge_betweenness_centrality):
+    def edge_iterative_centrality_attack(
+        self, nattacks=1, weight=None, centrality_method=edge_betweenness_centrality
+    ):
         """Carry out iterative targeted attack on edges.
 
         Arguments:
@@ -265,8 +356,8 @@ class Infrastructure:
             centrality_method: Measure used for assessing the centrality of the nodes
 
         Reference:
-            Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative analysis of 
-            link removal strategies in real complex weighted networks. 
+            Bellingeri, M., Bevacqua, D., Scotognella, F. et al. A comparative analysis of
+            link removal strategies in real complex weighted networks.
             Sci Rep 10, 3911 (2020). https://doi.org/10.1038/s41598-020-60298-7
         """
         if nattacks < 1:
@@ -274,7 +365,7 @@ class Infrastructure:
         if nattacks > len(self.graph.edges):
             nattacks = len(self.graph.edges)
 
-        graph_attacked = self.get_graph() # work on a local copy of the topology
+        graph_attacked = self.get_graph()  # work on a local copy of the topology
         edges_attacked = [0]  # list with coordinates of attacked edges
 
         lcc = [largest_connected_component(graph_attacked)]
@@ -331,7 +422,9 @@ class Infrastructure:
         if nattacks > len(self.graph.edges):
             nattacks = len(self.graph.edges)
 
-        graph_attacked = copy.deepcopy(self.graph) # work on a local copy of the topology
+        graph_attacked = copy.deepcopy(
+            self.graph
+        )  # work on a local copy of the topology
         nodes_attacked = [0]  # list with coordinates of attacked nodes
 
         lcc = [largest_connected_component(graph_attacked)]
@@ -358,7 +451,9 @@ class Infrastructure:
         if nattacks > len(self.graph.edges):
             nattacks = len(self.graph.edges)
 
-        graph_attacked = copy.deepcopy(self.graph) # work on a local copy of the topology
+        graph_attacked = copy.deepcopy(
+            self.graph
+        )  # work on a local copy of the topology
         edges_attacked = [0]  # list with coordinates of attacked edges
 
         lcc = [largest_connected_component(graph_attacked)]
@@ -409,7 +504,11 @@ class Infrastructure:
         print("-" * 90)
         i = 1
         for v, c in self.edge_betweenness_centrality(weight):
-            print("({0[0]:.6f}, {0[1]:.6f})\t\t({1[0]:.6f}, {1[1]:.6f})\t\t{2:.8f}".format(v[0], v[1], c))
+            print(
+                "({0[0]:.6f}, {0[1]:.6f})\t\t({1[0]:.6f}, {1[1]:.6f})\t\t{2:.8f}".format(
+                    v[0], v[1], c
+                )
+            )
             if i >= 10:
                 break
             i += 1
@@ -427,19 +526,29 @@ class Infrastructure:
             i += 1
         print("-" * 31)
 
-    def plot(self, filename=None, figsize=(12, 12), dpi=300, xlabel="East", ylabel="North", add_basemap=False,
-             provider=ctx.providers.OpenStreetMap.Mapnik, **kwargs):
+    def plot(
+        self,
+        filename=None,
+        figsize=(12, 12),
+        dpi=300,
+        xlabel="East",
+        ylabel="North",
+        add_basemap=False,
+        provider=ctx.providers.OpenStreetMap.Mapnik,
+        **kwargs
+    ):
         """Plot original infrastructure grid."""
-        _, ax = plt.subplots(figsize=figsize)
-        self.grid.plot(ax=ax, **kwargs)
-        if add_basemap:
-            ctx.add_basemap(ax, crs=self.grid.crs, source=provider)
-        plt.tight_layout()
-        plt.ylabel(ylabel)
-        plt.xlabel(xlabel)
-        if filename:
-            plt.savefig(filename, dpi=dpi)
-        return ax
+        return plot_grid(
+            self.grid,
+            filename,
+            figsize,
+            dpi,
+            xlabel,
+            ylabel,
+            add_basemap,
+            provider,
+            **kwargs
+        )
 
     def plot_topology(self, filename=None, figsize=(12, 12), node_size=5, dpi=300):
         """Plot graph of infrastructure topology."""
